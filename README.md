@@ -38,7 +38,7 @@ The firmware is developed using Visual Studio Code with the PlatformIO extension
 
 The hardware is based on an ESP32-S3 N16R8 development board or a board with a similar pinout.
 
-### Main cponents
+### Main components
 
 | Designator                                    | Quantity | Manufacturer                | Part Number   |
 | --------------------------------------------- | -------- | --------------------------- | -------------------------- |
@@ -51,3 +51,7 @@ The hardware is based on an ESP32-S3 N16R8 development board or a board with a s
 | Schmitt Trigger                               | 1        | HTC Korea TAEJIN Tech       | 74HC14D                    |
 | Reset Button                                  | 1        | Omron                       | B3FS-1000P                 |
 | Passive Speaker/Buzzer                        | 1        | XHXDZ                       | HC9042-16                  |
+
+### PCB layout
+
+![waku-ctl banner](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcbs.png)
