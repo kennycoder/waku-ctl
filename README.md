@@ -55,3 +55,8 @@ The hardware is based on an ESP32-S3 N16R8 development board or a board with a s
 ### PCB layout
 
 ![waku-ctl banner](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcbs.png)
+
+## UI
+
+[<img src="media/ui-1.png" width="49%">](media/ui-1.png)
+[<img src="media/ui-2.png" width="49%">](media/ui-2.png)

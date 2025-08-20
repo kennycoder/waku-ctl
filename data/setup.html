@@ -27,9 +27,23 @@
     box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
   }
 
-  h1 {
-    font-size: 2em;
-    margin-bottom: 24px;
+  .card-content {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .logo-container {
+    padding-right: 32px;
+    border-right: 1px solid #e0e0e0;
+    margin-right: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+ 
+   h1 {
+     font-size: 2em;
+     margin-bottom: 24px;
     text-align: center;
   }
 
@@ -73,11 +87,15 @@
 
 <div class="container">
   <div class="card">
-    <h1>WiFi Setup</h1>
-
-    <form id="wifi-form">
-      <label for="ssid">WiFi Network:</label>
-      <select id="ssid" name="ssid">
+    <div class="card-content">
+      <div class="logo-container">
+        <img src="/logo.png" alt="WaKu-ctl Logo">
+      </div>
+      <div>
+        <h1>WiFi Setup</h1>
+        <form id="wifi-form">
+          <label for="ssid">WiFi Network:</label>
+          <select id="ssid" name="ssid">
         <option value="">Scanning your WiFi networks, please wait..</option>
       </select>
 
@@ -99,7 +117,9 @@
       <input type="hidden" id="offline_mode" name="offline_mode" value="true">
 
       <button type="submit">Finish Setup & Connect</button>
-    </form>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 

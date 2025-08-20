@@ -38,6 +38,21 @@
     border-left-color: #21f32f;
   }  
 
+  .sidebar .logo-container {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .sidebar .logo-container img {
+    max-width: 100px; /* Adjust as needed */
+    margin-bottom: 10px;
+  }
+  .sidebar .project-name {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: #333;
+  }
+    
   .content {
     flex-grow: 1;
     padding: 20px;
@@ -140,6 +155,9 @@
 
   <div class="sidebar">
     <div class="card">
+      <div class="logo-container">
+        <img src="/logo.png" alt="WaKu-ctl Logo">
+      </div>
       <h2>Menu</h2>
       <a href="/">Home</a>
       <a href="/fans" >Fan Curves</a>
