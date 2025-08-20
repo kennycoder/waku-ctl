@@ -6,6 +6,12 @@ waku-ctl is an open-source water cooling controller designed to give you ultimat
 
 This project contains the hardware and software for the Waku Control device.
 
+## Support the Project
+
+If you find waku-ctl useful, please consider supporting its development through my Kickstarter campaign. Your support will help grow the project and bring new features to life!
+
+[**Support waku-ctl on Kickstarter!**](https://www.kickstarter.com/projects/nikolaidan/waku-ctl-the-open-source-water-cooling-controller/)
+
 ## Project Structure
 
 *   `/pcb`: Contains the PCB design files from Altium.
