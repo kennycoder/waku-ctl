@@ -1,0 +1,35 @@
+Altium Designer Pick and Place Locations
+D:\Development\embedded\ESP32\waku-controller\pcb\Project Outputs for waku-ctl-board\Pick Place for waku-ctl.csv
+
+========================================================================================================================
+File Design Information:
+
+Date:       15/08/25
+Time:       13:21
+Revision:   50b151a0bf722407cfa0146520d69203a0659cc7
+Variant:    No variations
+Units used: mm
+
+"Designator","Comment","Layer","Footprint","Center-X(mm)","Center-Y(mm)","Rotation","Description"
+"R_SDA","RC1206FR-0710KL","TopLayer","RESC3116X65X40ML10T20","24.9750","63.7250","0","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"R_SCL","RC1206FR-0710KL","TopLayer","RESC3116X65X40ML10T20","19.6500","60.3500","90","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"CCAP7","100nF","TopLayer","KEMT-1206-2_M","30.1250","60.4500","90","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"ADC1","ADS1115IDGSR","TopLayer","FP-DGS0010A-IPC_B","24.9500","60.0250","0","IC ADC 16BIT SIGMA-DELTA 10VSSOP"
+"AMUX1","CD4053BPWR","BottomLayer","FP-PW0016A-MFG","25.0250","43.8250","180","IC MUX/DEMUX TRIPLE 2X1 16TSSOP"
+"SPKR1","ALI_PASS_SPKR","TopLayer","AliSpeakerComponent","44.5720","11.8250","180","Slim speaker from aliexpress"
+"CCAP6","100nF","TopLayer","KEMT-1206-2_M","31.0000","30.0000","270","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"ST","2","TopLayer","FP-SOT108-1-MFG","25.0250","44.0650","180","IC INVERTER SCHMITT 6CH 14SO"
+"R6","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","34.0000","62.8250","90","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"R5","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","34.0000","52.4250","270","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"R4","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","34.0000","39.4500","270","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"R3","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","34.0000","26.0250","270","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"LVL2","3","BottomLayer","FP-DCT0008A-MFG","24.8750","54.7500","270","IC TRNSLTR BIDIRECTIONAL SM8"
+"LVL1","332","TopLayer","FP-PW0020A-IPC_C","25.1750","29.8250","0","IC TRNSLTR BIDIRECTIONAL 20TSSOP"
+"CCAP5","100nF","BottomLayer","KEMT-1206-2_M","20.8500","54.9250","90","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"CCAP4","100nF","BottomLayer","KEMT-1206-2_M","18.3250","49.6000","0","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"CCAP3","100nF","BottomLayer","KEMT-1206-2_M","18.1000","44.0250","90","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"CCAP2","100nF","TopLayer","KEMT-1206-2_M","18.9999","30.0000","270","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"CCAP1","100nF","TopLayer","KEMT-1206-2_M","25.1750","36.6500","180","CAP, Ceramic, 0.1 uF, +/- 10%, 50 V, -55 to 125 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"RST1","B3FS-1000P","BottomLayer","FP-B3FS-1000P-MFG","25.5000","64.5000","180","SWITCH TACTILE SPST-NO 0.05A 24V"
+"R2","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","7.1273","55.6274","90","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"R1","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","7.1274","65.1274","270","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"

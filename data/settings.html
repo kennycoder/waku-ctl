@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WaKu-ctl - Settings</title>
+<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+<script src="/all-jquery-deps.min.js"></script>
+<meta charset="utf-8">
+
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+    display: flex;
+  }
+
+  .sidebar {
+    width: 250px;
+    padding: 20px;
+  }
+
+  .sidebar a {
+    display: block;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #333;
+    border-left: 4px solid transparent;
+    transition: border-left-color 0.3s ease;
+  }
+
+  .sidebar a:hover {
+    border-left-color: #2196f3;
+  }
+
+  .sidebar .active {
+    border-left-color: #21f32f;
+  }  
+
+  .content {
+    flex-grow: 1;
+    padding: 20px;
+  }
+
+  .card {
+    background-color: #fff;
+    padding: 32px;
+    border-radius: 4px;
+    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+  }
+
+  h1 {
+    font-size: 2em;
+    margin-bottom: 24px;
+  }
+
+  .chart-container {
+      display: inline-block;
+      width: 640px;
+      height: 320px;
+      margin: 20px;
+      border: 1px solid #ccc;
+      position: relative;
+  }
+  .chart-container h3 {
+    text-align: center;
+    margin-top: 0;
+  }
+  .dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: blue;
+    border-radius: 50%;
+    cursor: move;
+  }
+  .dot-info {
+    background-color: white;
+    border: 1px solid black;
+    font-size: 10px;
+    font-weight: bold;
+    width: auto;
+    position: absolute;
+    left: 10px;
+    user-select: none;
+    padding: 4px;
+    white-space: nowrap;
+  }
+  .line {
+    stroke: blue;
+    stroke-width: 2;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+  }
+
+  input[type="text"]:read-only,
+  input[type="password"]:read-only,
+  input[type="number"]:read-only,
+  select:read-only {
+    background-color: lightgray;
+  }
+
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z' fill='%23757575'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 12px;
+  }
+
+    button {
+      background-color: #2196f3;
+      color: #fff;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }  
+</style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="card">
+      <h2>Menu</h2>
+      <a href="/">Home</a>
+      <a href="/fans" >Fan Curves</a>
+      <a href="/rgb">ARGB Lighting</a>
+      <a href="/settings" class="active">Settings</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <h1>WiFi Setup</h1>
+
+      <form id="wifi-form">
+        <label for="ssid">WiFi Network:</label>
+        <select id="ssid" name="ssid">
+          <option value="">Scanning your WiFi networks, please wait..</option>
+        </select>
+
+        <label for="password">WiFi Password:</label>
+        <input type="password" id="password" name="password">
+
+        <label for="hostname">Hostname:</label>
+        <input type="text" id="hostname" name="hostname">
+
+        <label for="units">Temperature Units:</label>
+        <select id="units" name="units">
+          <option value="C">Celcius</option>
+          <option value="F">Farenheit</option>
+        </select>
+
+        <hr>
+        <input type="checkbox" id="mqtt_enable" name="mqtt_enable" value="true" disabled>
+        <label style="display: inline" for="mqtt_enable">Enable sending telemetry via MQTT</label>
+        <br><br>
+
+        <label for="mqtt_broker">MQTT Broker:</label>
+        <input type="text" id="mqtt_broker" name="mqtt_broker">
+
+        <label for="mqtt_topic">MQTT Topic:</label>
+        <input type="text" id="mqtt_topic" name="mqtt_topic">
+
+        <label for="mqtt_username">MQTT Username:</label>
+        <input type="text" id="mqtt_username" name="mqtt_username">
+
+        <label for="mqtt_password">MQTT Password:</label>
+        <input type="text" id="mqtt_password" name="mqtt_password">
+
+        <label for="mqtt_port">MQTT Port:</label>
+        <input type="number" id="mqtt_port" name="mqtt_port">
+
+        <label for="tel_itv">MQTT Telemetry Send Interval:</label>
+        <select id="tel_itv" name="tel_itv">
+          <option value="5000">5 sec</option>
+          <option value="10000" selected>10 sec</option>
+          <option value="30000">30 sec</option>
+          <option value="60000">60 sec</option>
+        </select>
+
+        <input type="hidden" id="force_reboot" name="force_reboot" value="true">
+        <input type="hidden" id="offline_mode" name="offline_mode" value="true">
+
+        <button type="submit">Save</button>
+      </form>
+      <hr>
+      <button id="reset" style="background-color: red">Factory Reset</button>
+    </div>
+  </div>
+
+  <script>
+  function toggleMQTTElements() {
+      if($('#mqtt_enable').is(":checked")) {
+        $('#mqtt_broker').prop("readonly", false);
+        $('#mqtt_topic').prop("readonly", false);
+        $('#mqtt_username').prop("readonly", false);
+        $('#mqtt_password').prop("readonly", false);
+        $('#mqtt_port').prop("readonly", false);
+        $('#tel_itv').prop("readonly", false);
+      } else {
+        $('#mqtt_broker').prop("readonly", true);
+        $('#mqtt_topic').prop("readonly", true);
+        $('#mqtt_username').prop("readonly", true);
+        $('#mqtt_password').prop("readonly", true);
+        $('#mqtt_port').prop("readonly", true);
+        $('#tel_itv').prop("readonly", true);
+      }
+  }
+
+  $(document).ready(function() {
+    toggleMQTTElements(); // disable fields until everything is loaded
+
+    // Fetch WiFi networks on page load
+    $.ajax({
+      url: '/networks',
+      type: 'GET',
+      dataType: 'json',
+      success: function(data) {
+        var networkSelect = $('#ssid');
+
+        networkSelect.append($('<option>', {
+            value: "",
+            text: "-- Offline (AP) Mode --"
+          }));
+        
+        networkSelect.find('option').get(0).remove();
+        $('#ssid').val("");
+
+        $.each(data.networks, function(index, network) {
+          networkSelect.append($('<option>', {
+            value: network,
+            text: network
+          }));
+        });
+
+        $.ajax({
+          url: '/get-settings',
+          type: 'GET',
+          dataType: 'json',
+          success: function(data) {
+              $('#hostname').val(data.hostname);
+              $('#ssid').val(data.ssid).change();
+              $('#password').val(data.password);
+              $('#offline_mode').val(data.offline_mode);
+              $('#units').val(data.units);
+              $('#mqtt_enable').attr('checked', data.mqtt_enable);
+              $('#mqtt_broker').val(data.mqtt_broker);
+              $('#mqtt_username').val(data.mqtt_username);
+              $('#mqtt_password').val(data.mqtt_password);
+              $('#mqtt_topic').val(data.mqtt_topic);
+              $('#mqtt_port').val(data.mqtt_port);
+              $('#tel_itv').val(data.tel_itv);
+              toggleMQTTElements();
+          }
+        });      
+      }
+    });
+
+
+    // Update SSID field when network is selected
+    $('#ssid').change(function() {
+      if($('#ssid :selected').text() == "-- Offline (AP) Mode --") {
+        $('#offline_mode').val("true");
+
+        $('#mqtt_enable').attr('disabled', true);
+        $('#mqtt_enable').attr('checked', false);
+        
+        $('#mqtt_broker').prop("readonly", true);
+      } else {
+        $('#offline_mode').val("false");
+
+        $('#mqtt_enable').removeAttr('disabled');
+
+        $('#mqtt_broker').prop("readonly", false);
+      }
+    });
+
+    $('#reset').click(function() {
+      if (confirm("Are you sure you want to factory reset the device?") == true) {
+        $.ajax({
+          url: '/clear-settings',
+          type: 'GET',
+          dataType: 'json',
+          success: function(data) {
+            alert('Device was reset to factory settings! Please wait while the device is restarting. Check whether you are reconnected to controller\'s WiFi (WaKu-ctl).');
+            window.location.href = '/';
+          }
+        });    
+      }
+    });
+
+    $('#mqtt_enable').click(function() {
+      toggleMQTTElements();
+    });
+
+    // Handle form submission
+    $('#wifi-form').submit(function(event) {
+      event.preventDefault(); // Prevent default form submission
+
+      $.ajax({
+        url: '/save-settings',
+        type: 'POST',
+        data: $(this).serialize(),
+        success: function(response) {
+          // Handle successful setup (e.g., display a success message)
+          if ($('#offline_mode').val() == "true") {
+            alert('Settings were saved! Please wait while the device is restarting. Check whether you are reconnected to controller\'s WiFi (WaKu-ctl).');
+            //window.location.href = '/';
+          } else {
+            alert('Settings were saved! Please wait while the device is restarting. Check your router to find the IP address of the WaKu controller.');
+            //window.location.href = '/';
+          }
+        },
+        error: function(error) {
+          // Handle setup errors (e.g., display an error message)
+          alert('WiFi setup failed: ' + error.responseText);
+        }
+      });
+    });
+  });
+
+  </script>
+
+</body>
+</html>

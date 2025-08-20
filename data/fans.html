@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WaKu-ctl - Fan curves configuration</title>
+<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+<script src="/all-jquery-deps.min.js"></script>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+    display: flex;
+  }
+
+  hr {
+    background-color: #ccc;
+    border: 0 none;
+    color: #ccc;
+    height: 1px;
+  }
+
+  .sidebar {
+    width: 250px;
+    padding: 20px;
+  }
+
+  .sidebar a {
+    display: block;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #333;
+    border-left: 4px solid transparent;
+    transition: border-left-color 0.3s ease;
+  }
+
+  .sidebar a:hover {
+    border-left-color: #2196f3;
+  }
+
+  .sidebar .active {
+    border-left-color: #21f32f;
+  }
+
+  .content {
+    flex-grow: 1;
+    padding: 20px;
+  }
+
+  .card {
+    background-color: #fff;
+    padding: 32px;
+    border-radius: 4px;
+    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+  }
+
+  h1 {
+    font-size: 2em;
+    margin-bottom: 24px;
+  }
+
+  .chart-controls-container {
+      margin: 0 20px 0 20px ;
+    }
+
+    .chart-controls-container select {
+      margin: 0 5px 10px 0;
+    }
+
+
+  .chart-container {
+      display: inline-block;
+      width: 640px;
+      height: 320px;
+      margin: 20px;
+      border: 1px solid #ccc;
+      position: relative;
+    }
+    .chart-container h3 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background-color: blue;
+      border-radius: 50%;
+      cursor: move;
+      touch-action: none;
+    }
+    .dot-info {
+      background-color: white;
+      border: 1px solid black;
+      font-size: 10px;
+      font-weight: bold;
+      width: auto;
+      position: absolute;
+      left: 10px;
+      user-select: none;
+      padding: 4px;
+      white-space: nowrap;
+    }
+    .line {
+      stroke: blue;
+      stroke-width: 2;
+    }
+
+    button {
+      background-color: #2196f3;
+      color: #fff;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }  
+</style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="card">
+      <h2>Menu</h2>
+      <a href="/">Home</a>
+      <a href="/fans" class="active">Fan Curves</a>
+      <a href="/rgb">ARGB Lighting</a>
+      <a href="/settings">Settings</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <h1>Fan Curves</h1>
+
+      <form id="fan-curves" class="fans-config">
+        <div id="charts"></div>
+        <button type="submit">Save curves</button>
+        <input type="hidden" id="FAN_0" name="FAN_0" value="{}">
+        <input type="hidden" id="FAN_1" name="FAN_1" value="{}">
+        <input type="hidden" id="FAN_2" name="FAN_2" value="{}">
+        <input type="hidden" id="FAN_3" name="FAN_3" value="{}">
+      </form>
+      
+      <script>
+        var fan_data = [];
+        var available_sensors = ['TEMP_1', 'TEMP_2'];
+        var units = "C";
+
+        $(document).ready(function() {
+          $.ajax({
+            url: '/get-curves',
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+              fan_data = data;
+              // update data object with fetched data
+              for (const key in fan_data) {
+                if (fan_data.hasOwnProperty(key)) {
+                  units = fan_data[key]['units'];
+                  fan_data[key]['curves'].forEach((point, index) => {
+                    fan_data[key]['curves'][index].temp = parseInt(point.temp);
+                    fan_data[key]['curves'][index].fan = parseInt(point.fan);
+                  });
+                }
+              }
+      
+              for (const key in fan_data) {
+                createChart(key, fan_data[key]['curves'], fan_data[key]['sensor'], fan_data[key]['temp_th'], fan_data[key]['duty_th'], fan_data[key]['sud_dur'], units);
+              }
+            }
+          });
+      
+          $('#fan-curves').submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+      
+            fan_data['FAN_0']['sensor'] = $('#sensor_id-FAN_0').val();
+            fan_data['FAN_1']['sensor'] = $('#sensor_id-FAN_1').val();
+            fan_data['FAN_2']['sensor'] = $('#sensor_id-FAN_2').val();
+            fan_data['FAN_3']['sensor'] = $('#sensor_id-FAN_3').val();
+
+            fan_data['FAN_0']['temp_th'] = $('#temp_th-FAN_0').val();
+            fan_data['FAN_1']['temp_th'] = $('#temp_th-FAN_1').val();
+            fan_data['FAN_2']['temp_th'] = $('#temp_th-FAN_2').val();
+            fan_data['FAN_3']['temp_th'] = $('#temp_th-FAN_3').val();
+
+            fan_data['FAN_0']['duty_th'] = $('#duty_th-FAN_0').val();
+            fan_data['FAN_1']['duty_th'] = $('#duty_th-FAN_1').val();
+            fan_data['FAN_2']['duty_th'] = $('#duty_th-FAN_2').val();
+            fan_data['FAN_3']['duty_th'] = $('#duty_th-FAN_3').val();
+
+            fan_data['FAN_0']['sud_dur'] = $('#step-FAN_0').val();
+            fan_data['FAN_1']['sud_dur'] = $('#step-FAN_1').val();
+            fan_data['FAN_2']['sud_dur'] = $('#step-FAN_2').val();
+            fan_data['FAN_3']['sud_dur'] = $('#step-FAN_3').val();
+
+            $('#FAN_0').val(JSON.stringify(fan_data["FAN_0"]));
+            $('#FAN_1').val(JSON.stringify(fan_data["FAN_1"]));
+            $('#FAN_2').val(JSON.stringify(fan_data["FAN_2"]));
+            $('#FAN_3').val(JSON.stringify(fan_data["FAN_3"]));
+      
+            $.ajax({
+              url: '/save-curves',
+              type: 'POST',
+              data: $(this).serialize(),
+              success: function(response) {
+                // Handle successful setup (e.g., display a success message)
+                alert('Fan curves saved successfully!');
+              },
+              error: function(error) {
+                // Handle setup errors (e.g., display an error message)
+                alert('Fan curves saving failed: ' + error.responseText);
+              }
+            });
+            return false; // Prevent default form submission
+          });
+        });
+      
+        function createChart(key, data, active_sensor, active_temp_th, active_duty_th, active_sud_duration, units) {
+          const chartControlsContainer = $('<div>').addClass('chart-controls-container').attr('id', `chart-controls-${key}`);
+
+          const chartContainer = $('<div>').addClass('chart-container').attr('id', `chart-${key}`);
+          var fanLabelOverride = (key == "FAN_0") ? "FAN_PUMP" : key;
+          chartContainer.append(`<h3 style="position: absolute; opacity: 30%; margin-inline: auto; width: fit-content; left:0; right:0; top: 50%; transform: translateY(-50%); user-select: none;">${fanLabelOverride}</h3>`);
+          
+          const svg = $(`<svg width="100%" height="100%"></svg>`).attr('id', `svg-${key}`).appendTo(chartContainer);
+
+          const temp_src_select_label = $(`<label for="sensor_id-${key}">Temperature source:</label>`);
+          const temp_src_select = $(`<select style="bottom: 10px; right: 10px;"></select><br>`).attr('id', `sensor_id-${key}`)
+          for (const t_sensor of available_sensors) {
+            temp_src_select.append($('<option>', { 
+              value: t_sensor,
+              text : t_sensor,
+              selected: active_sensor == t_sensor
+            }));
+          } 
+          temp_src_select_label.appendTo(chartControlsContainer);
+          temp_src_select.appendTo(chartControlsContainer);
+          
+          const rpm_select_label = $(`<label for="duty_th-${key}">Fan RPM alarm:</label>`);
+          const rpm_select = $(`<select style="bottom: 10px; right: 100px;"></select><br>`).attr('id', `duty_th-${key}`);
+          rpm_select.append($('<option>', { value: -1, text : 'No alarm', selected: active_duty_th == -1 }));
+          for (_r = 100; _r <= 300; _r+=50) {
+            rpm_select.append($('<option>', { value: _r, text : '< ' + _r + ' RPM', selected: active_duty_th == _r }));
+          }
+          rpm_select_label.appendTo(chartControlsContainer);
+          rpm_select.appendTo(chartControlsContainer);
+
+          const temp_select_label = $(`<label for="temp_th-${key}">Temperature alarm:</label>`);
+          const temp_select = $(`<select style="bottom: 10px; right: 100px;"></select><br>`).attr('id', `temp_th-${key}`);
+          temp_select.append($('<option>', { value: 999, text : 'No alarm', selected: active_temp_th == -1 }));
+          
+          for (_t = 30; _t <= 60; _t+=10) {
+            if (units == "F") {
+              _tt = _t*1.8+32;
+            } else {
+              _tt = _t;
+            }
+            temp_select.append($('<option>', { value: _t, text : '>= ' + _tt + '°' + units, selected: active_temp_th == _t }));
+          }
+          temp_select_label.appendTo(chartControlsContainer);
+          temp_select.appendTo(chartControlsContainer);
+
+          const stepupdown_select_label = $(`<label for="step-${key}">Step up/down duration:</label>`);
+          const stepupdown_select = $(`<select style="bottom: 10px; right: 100px;"></select><br>`).attr('id', `step-${key}`);
+          for (_s = 1; _s <= 100; _s+=1) {
+            stepupdown_select.append($('<option>', { value: _s, text : _s + ' seconds', selected: active_sud_duration == _s }));
+          }
+          stepupdown_select_label.appendTo(chartControlsContainer);
+          stepupdown_select.appendTo(chartControlsContainer);
+
+          $('<hr>').appendTo(chartControlsContainer);
+
+          $('#charts').append(chartContainer);
+          $('#charts').append(chartControlsContainer);
+      
+          for (let i = 0; i <= 10; i++) {
+            // Vertical lines
+            var newLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+            newLine.setAttribute('x1', i * svg.width() / 10);
+            newLine.setAttribute('y1', '0');
+            newLine.setAttribute('x2', i * svg.width() / 10);
+            newLine.setAttribute('y2', svg.height());
+            newLine.setAttribute("stroke", "#cccccc")
+            svg.append(newLine);
+      
+            // Horizontal lines
+            var newLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+            newLine.setAttribute('x1', '0');
+            newLine.setAttribute('y1', i * svg.height() / 10);
+            newLine.setAttribute('x2', svg.width());
+            newLine.setAttribute('y2', i * svg.height() / 10);
+            newLine.setAttribute("stroke", "#cccccc")
+            svg.append(newLine);
+      
+            // Add text labels for vertical lines
+            var text = document.createElementNS('http://www.w3.org/2000/svg','text');
+            text.setAttribute('x', i * (svg.width() / 10)-2);
+            text.setAttribute('y', svg.height()-2);
+            text.setAttribute('font-size', "8px");
+            text.setAttribute('text-anchor', 'end');
+            var x_val = i * 10;
+            if(units == "F") {
+              x_val = x_val*1.8+32;
+            }
+            text.textContent = x_val + " °" + units;
+            svg.append(text);
+      
+            // Add text labels for horizontal lines
+            var text = document.createElementNS('http://www.w3.org/2000/svg','text');
+            text.setAttribute('x', 2);
+            text.setAttribute('y', i * (svg.height() / 10)+8);
+            text.setAttribute('font-size', "8px");
+            text.setAttribute('text-anchor', 'start');
+            var y_val = 100 - (i*10);
+            text.textContent = y_val + '%';
+            svg.append(text);
+          }
+            
+          // Find min/max values for scaling
+          const tempMin = Math.min(...data.map(d => d.temp));
+          const tempMax = Math.max(...data.map(d => d.temp));
+          const fanMin = Math.min(...data.map(d => d.fan));
+          const fanMax = Math.max(...data.map(d => d.fan));
+      
+          // Function to scale data point to chart dimensions
+          const scaleX = (temp) => (temp / 100) * chartContainer.width();
+          const scaleY = (fan) => (fan / 255) * chartContainer.height();
+          const unscaleX = (temp) => (temp / chartContainer.width()) * 100;
+          const unscaleY = (fan) => (fan / chartContainer.height()) * 255;
+          
+          // Create draggable dots
+          data.forEach((point, index) => {
+            var newLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+            newLine.setAttribute('id',`line-${key}-${index}`);
+            newLine.setAttribute("stroke", "black")
+      
+            if(index == 0 && data.length != 1) {
+              newLine.setAttribute('x1','0');
+              newLine.setAttribute('y1',chartContainer.height());
+              newLine.setAttribute('x2', scaleX(point.temp));
+              newLine.setAttribute('y2',chartContainer.height()-scaleY(point.fan));
+              newLine.setAttribute("stroke", "green")
+            } else if (index == data.length-1) {
+              newLine.setAttribute('x1', scaleX(data[index-1].temp));
+              newLine.setAttribute('y1',chartContainer.height()-scaleY(data[index-1].fan));
+              newLine.setAttribute('x2', scaleX(point.temp));
+              newLine.setAttribute('y2',chartContainer.height()-scaleY(point.fan));
+      
+            } else {
+              newLine.setAttribute('x1', scaleX(data[index-1].temp));
+              newLine.setAttribute('y1',chartContainer.height()-scaleY(data[index-1].fan));
+              newLine.setAttribute('x2', scaleX(point.temp));
+              newLine.setAttribute('y2',chartContainer.height()-scaleY(point.fan));
+            }
+      
+            svg.append(newLine);
+      
+            // add final line
+      
+            if (index == data.length-1) {
+              var fLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+              fLine.setAttribute('id',`line-${key}-f`);
+              fLine.setAttribute('x1', scaleX(data[index].temp));
+              fLine.setAttribute('y1',chartContainer.height()-scaleY(data[index].fan));
+              fLine.setAttribute('x2', chartContainer.width());
+              fLine.setAttribute('y2',0);
+              fLine.setAttribute("stroke", "red")
+      
+              svg.append(fLine);
+            }      
+      
+            const dot = $(`<div id="draggable-dot-${key}-${index}">`)
+              .addClass('dot')
+              .css({
+                left: scaleX(point.temp) - 4 + 'px', // Center the dot
+                bottom: scaleY(point.fan) - 4 + 'px'  // Center the dot
+              })
+              .appendTo(chartContainer)
+              .draggable({
+                containment: calculateContainment(data, index, svg, scaleX, scaleY), 
+                drag: function(event, ui) {
+                  // Update data point on drag
+                  updated_temp = unscaleX(ui.position.left+4);
+                  updated_fan = unscaleY(svg.height() - ui.position.top-4);
+                  point.temp = updated_temp < 0 ? 0 : updated_temp;
+                  point.fan = updated_fan < 0 ? 0 : updated_fan;
+      
+      
+                  if(index == 0) {
+                    l1 = $(`#line-${key}-0`)[0];
+                    l2 = $(`#line-${key}-1`)[0];
+      
+                    l1.setAttribute('x2', ui.position.left+4);
+                    l1.setAttribute('y2', ui.position.top+4);
+                    l2.setAttribute('x1', ui.position.left+4);
+                    l2.setAttribute('y1', ui.position.top+4);
+                  } else if (index == data.length-1) {
+                    l1 = $(`#line-${key}-${index}`)[0];
+      
+                    l1.setAttribute('x2', ui.position.left+4);
+                    l1.setAttribute('y2', ui.position.top+4);
+                  } else {
+                    l1 = $(`#line-${key}-${index}`)[0];
+                    l2 = $(`#line-${key}-${index+1}`)[0];
+      
+                    l1.setAttribute('x2', ui.position.left+4);
+                    l1.setAttribute('y2', ui.position.top+4);
+                    l2.setAttribute('x1', ui.position.left+4);
+                    l2.setAttribute('y1', ui.position.top+4);
+                  }
+      
+                  if (index == data.length-1) {
+                    lf = $(`#line-${key}-f`)[0];
+      
+                    lf.setAttribute('x1', ui.position.left+4);
+                    lf.setAttribute('y1', ui.position.top+4);
+                  }
+      
+                  var current_degrees = Math.floor(data[index].temp);
+                  if(units == "F")
+                    current_degrees = current_degrees*1.8+32;
+
+                  $(`#draggable-dot-info-${key}-${index}`).html(current_degrees + ' &deg' + units +' at ' + Math.floor(data[index].fan/255*100) + '% fan');
+                  
+                },
+                start: function(event, ui) {
+                  $(`#draggable-dot-info-${key}-${index}`).show();
+                },
+                stop: function(event, ui) {
+                  $(`#draggable-dot-info-${key}-${index}`).hide();
+                  //console.log(Math.floor(data[index].temp) + 'c with fans at ' + Math.floor(data[index].fan/255*100) + '%');
+                  
+                  resetContainment(key, data, svg, scaleX, scaleY);
+                },
+              });
+      
+              const dot_tip = $(`<div id="draggable-dot-info-${key}-${index}">`)
+              .addClass('dot-info')
+              .html(Math.floor(data[index].temp) + '&degC at ' + Math.floor(data[index].fan/255*100) + '% fan')
+              .hide()
+              .appendTo(dot)
+          });
+        }
+      
+        function calculateContainment(data, index, svg, scaleX, scaleY) {
+          if(index == 0 && data.length != 1) {
+            containment = [
+              svg.position().left-4, 
+              svg.position().top+svg.height()-scaleY(data[index+1].fan)-4,
+              svg.position().left+scaleX(data[index+1].temp)-4, 
+              svg.position().top+svg.height()-4
+            ];
+          } else if (index == data.length-1) {
+            containment = [
+              svg.position().left+scaleX(data[index-1].temp)-4, 
+              svg.position().top-4, 
+              svg.position().left+svg.width()-4, 
+              svg.position().top+svg.height()-scaleY(data[index-1].fan)-4
+            ];
+          } else {
+            containment = [
+              svg.position().left+scaleX(data[index-1].temp)-4, 
+              svg.position().top+svg.height()-scaleY(data[index+1].fan)-4,
+              svg.position().left+scaleX(data[index+1].temp)-4, 
+              svg.position().top+svg.height()-scaleY(data[index-1].fan)-4
+            ];
+          }      
+          return containment;
+        }
+      
+        function resetContainment(key, data, svg, scaleX, scaleY) {
+          data.forEach((point, index) => {
+            var containment = calculateContainment(data, index, svg, scaleX, scaleY);
+            $(`#draggable-dot-${key}-${index}`).draggable("option", "containment", containment );
+          });
+        }
+      </script>
+    </div>
+  </div>
+</body>
+</html>

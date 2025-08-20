@@ -1,0 +1,10 @@
+Line #,Name,Description,Designator,Quantity,Manufacturer 1,Manufacturer Part Number 1,JLCPCB Part #ï¼ˆoptionalï¼‰
+,ADS1115IDGSR,-40?~+125? 0.5uA 16 16Hz 1LSB 2 2.048V 2V~5.5V Built-In Built-In I2C Sigma-Delta Support Yes VSSOP-10 Analog to Digital Converters (ADC) ROHS,ADC1,1,Texas Instruments,ADS1115IDGSR,C37593
+,CD4053BPWR,"-40?~+85? 2:1 30ns 3V~18V 40MHz TSSOP-16 Analog Switches, Multiplexers ROHS",AMUX1,1,Texas Instruments,CD4053BPWR,C106760
+,C1206C104K5RACTU,100nF 50V X7R ±10% 1206 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,"CCAP1, CCAP2, CCAP3, CCAP4, CCAP5, CCAP6, CCAP7",7,Samsung Electro-Mechanics,CL31B104KBCNNNC,C24497
+,TXS0108EPWR,"-40?~+85? 1.4V~3.6V 1.65V~5.5V 60Mbps 8 Auto Direction Detection Bidirectional Push-Pull TSSOP-20 Translators, Level Shifters ROHS",LVL1,1,Texas Instruments,TXS0108EPWR,C17206
+,TXS0102DCTT,"-40?~+85? 1.65V~3.6V 2 2.3V~5.5V 24Mbps Auto Direction Detection Bidirectional Push-Pull SSOP-8-2.8mm Translators, Level Shifters ROHS",LVL2,1,Texas Instruments,TXS0102DCTT,C2677354
+,RC1206FR-0710KL,-55?~+155? 10k? 200V 250mW Thick Film Resistor ±1% ±100ppm/? 1206 Chip Resistor - Surface Mount ROHS,"R1, R2, R3, R4, R5, R6, R_SCL, R_SDA",8,UNI-ROYAL(Uniroyal Elec),1206W4F1002T5E,C17902
+,"74HC14D,653",SOIC-14 Inverters ROHS,ST,1,HTC Korea TAEJIN Tech,74HC14D,C699447
+,B3FS-1000P,"-25?~+70? 1N 24V 3.1mm 50mA 6.3mm 6mm Gull Wing Round Button SPST Surface Mount,Vertical SMD,6x6mm Tactile Switches ROHS",RST1,1,Omron,B3FS-1000P,C271750
+,ALI_PASS_SPKR,"2.7kHz 2V~4V 3V 4.2mm 80dB 80mA 9mm Electromagnetic Passive (Externally Driven) ??,D9xL4.2mm Buzzers ROHS",SPKR1,1,XHXDZ,HC9042-16?,C49246946

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WaKu-ctl - RGB Control</title>
+<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+<script src="/all-jquery-deps.min.js"></script>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+    display: flex;
+  }
+
+  .sidebar {
+    width: 250px;
+    padding: 20px;
+  }
+
+  .sidebar a {
+    display: block;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #333;
+    border-left: 4px solid transparent;
+    transition: border-left-color 0.3s ease;
+  }
+
+  .sidebar a:hover {
+    border-left-color: #2196f3;
+  }
+
+  .sidebar .active {
+    border-left-color: #21f32f;
+  }
+
+  .content {
+    flex-grow: 1;
+    padding: 20px;
+  }
+
+  .card {
+    background-color: #fff;
+    padding: 32px;
+    border-radius: 4px;
+    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+  }
+
+  h1 {
+    font-size: 2em;
+    margin-bottom: 24px;
+  }
+
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z' fill='%23757575'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 12px;
+  }
+
+    button {
+      background-color: #2196f3;
+      color: #fff;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }  
+
+  /* Style for color input elements */
+  input[type="color"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%; /* Full width */
+    height: 40px; /* Specified height */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    padding: 0; /* Remove default padding */
+  }
+
+  /* Optional: Style for color input thumb */
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="card">
+      <h2>Menu</h2>
+      <a href="/">Home</a>
+      <a href="/fans" >Fan Curves</a>
+      <a href="/rgb" class="active">ARGB Lighting</a>
+      <a href="/settings">Settings</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <h1>RGB Control</h1>
+
+      <form id="rgb-form">
+        <label for="mode_led_0">Operation mode for ARGB header #1:</label>
+        <br>
+        <select name="mode_led_0" id="mode_led_0">
+          <option value="0">Off</option>
+          <option value="1">Static single color</option>
+          <option value="2">2 color wave effect</option>
+          <option value="3">2 color moving effect</option>
+          <option value="4">Rainbow effect</option>
+          <option value="5">Pass-through from the external source</option>
+        </select>
+        <br><br>
+        <label for="num_leds_led_0">Amount of LEDs on the strip (<span id="num_leds_led_0_val">32</span>):</label>
+        <input type="range" min="1" max="64" value="10" class="slider" id="num_leds_led_0" name="num_leds_led_0">
+        <label for="start_color_led_0">ARGB 1 Color 1:</label>
+        <input type="color" id="start_color_led_0" name="start_color_led_0" value="#0000ff">
+        <label for="end_color_led_0">ARGB 1 Color 2:</label>
+        <input type="color" id="end_color_led_0" name="end_color_led_0" value="#ff0000">
+        <label for="speed_led_0">Effect speed (<span id="speed_led_0_val">32</span>):</label>
+        <input type="range" min="1" max="100" value="11" class="slider" id="speed_led_0" name="speed_led_0">
+
+        <hr>
+        
+        <label for="mode_led_1">Operation mode for ARGB header #2:</label>
+        <br>
+        <select name="mode_led_1" id="mode_led_1">
+          <option value="0">Off</option>
+          <option value="1">Static single color</option>
+          <option value="2">2 color wave effect</option>
+          <option value="3">2 color moving effect</option>
+          <option value="4">Rainbow effect</option>
+          <option value="5">Pass-through from the external source</option>
+        </select>
+        <br><br>
+        <label for="num_leds_led_1">Amount of LEDs on the strip (<span id="num_leds_led_1_val">32</span>):</label>
+        <input type="range" min="1" max="64" value="12" class="slider" id="num_leds_led_1" name="num_leds_led_1">
+        <br><br>
+        <label for="start_color_led_1">ARGB 2 Color 1:</label>
+        <input type="color" id="start_color_led_1" name="start_color_led_1" value="#0000ff">
+        <label for="end_color_led_1">ARGB 2 Color 2:</label>
+        <input type="color" id="end_color_led_1" name="end_color_led_1" value="#ff0000">
+        <label for="speed_led_1">Effect speed (<span id="speed_led_1_val">32</span>):</label>
+        <input type="range" min="1" max="100" value="13" class="slider" id="speed_led_1" name="speed_led_1">
+        <br><br>
+
+        <button type="submit">Save Colors</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function toHexColorString(num, len = 6) {
+      const hex = num.toString(16).toUpperCase();
+      return "#" + hex.padStart(len, '0');
+    }
+
+    $(document).ready(function() {
+      $.ajax({
+        url: '/get-rgb',
+        type: 'GET',
+        dataType: 'json',
+        success: function(data) {
+          $.each(data, function(index, val_obj) {
+            var led_id = index.toLowerCase();
+
+            $.each(val_obj, function(name, value) {
+              value = name.includes("color") ? toHexColorString(value) : value;
+              $("#" + name + "_" + led_id).val(value);
+
+              if($("#" + name + "_" + led_id + "_val").length) {
+                $("#" + name + "_" + led_id + "_val").text(value);
+              }
+            });
+          });
+        }
+      });
+
+      // Handle form submission
+      $('#rgb-form').submit(function(event) {
+        event.preventDefault();
+
+        led1_data = 
+          {
+            "speed": $('#speed_led_0').val(),
+            "mode": $('#mode_led_0').val(),
+            "start_color": parseInt($('#start_color_led_0').val().replace("#", ""), 16),
+            "end_color": parseInt($('#end_color_led_0').val().replace("#", ""), 16),
+            "num_leds": $('#num_leds_led_0').val()
+          }
+        
+        led2_data = 
+          {
+            "speed": $('#speed_led_1').val(),
+            "mode": $('#mode_led_1').val(),
+            "start_color": parseInt($('#start_color_led_1').val().replace("#", ""), 16),
+            "end_color": parseInt($('#end_color_led_1').val().replace("#", ""), 16),
+            "num_leds": $('#num_leds_led_1').val()
+          }
+
+        $.ajax({
+          url: '/save-rgb',
+          type: 'POST',
+          data: {
+            "LED_0": JSON.stringify(led1_data),
+            "LED_1": JSON.stringify(led2_data),
+          },
+          success: function(response) {
+            alert('Colors saved successfully!');
+          },
+          error: function(error) {
+            alert('Error saving colors: ' + error.responseText);
+          }
+        });
+      });
+
+      $('#num_leds_led_0').on('input', function() {
+        $('#num_leds_led_0_val').text($(this).val());
+      });
+      $('#num_leds_led_1').on('input', function() {
+        $('#num_leds_led_1_val').text($(this).val());
+      });
+      $('#speed_led_0').on('input', function() {
+        $('#speed_led_0_val').text($(this).val());
+      });
+      $('#speed_led_1').on('input', function() {
+        $('#speed_led_1_val').text($(this).val());
+      });
+
+    });
+  </script>
+</body>
+</html>
