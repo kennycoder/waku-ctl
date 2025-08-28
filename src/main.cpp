@@ -97,7 +97,7 @@ void SaveConfig(const Settings& s) {
 
 void InitializeTasks() {
     xTaskCreate(MonitorStatesTask, "MonitorStates", 4096, NULL, 6, NULL);
-    xTaskCreate(ReadTemperaturesTask, "ReadTemps", 6144, NULL, 5, NULL);
+    xTaskCreate(ReadTemperaturesTask, "ReadTemps", 4096, NULL, 5, NULL);
     xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 4, NULL);
     xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
     xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
@@ -119,7 +119,7 @@ void InitializeFanCurves() {
 
         DeserializationError error = deserializeJson(fan_doc, fan_curves);
 
-        if (error || fan_curves == "{}") {
+        if (error || fan_curves == "{}" || fan_curves == "[]") {
             Serial.printf("No/Invalid settings for %s, using defaults.\n", fan_key.c_str());
             m_SensorSettings[fan_id].sensor_name = "TEMP_1";
             m_SensorSettings[fan_id].temperature_alarm_threshold = 999;
@@ -158,8 +158,8 @@ void InitializeFanCurves() {
     }
 
     // Set initial fan speeds based on current temps
-    const double t1 = ReadTemperature(0);
-    const double t2 = ReadTemperature(1);
+    double t1 = ReadTemperature(0);
+    double t2 = ReadTemperature(1);
 
     for (int i = 0; i < ACTIVE_FANS; i++) {
         int fan_id = a_FanIds[i];
@@ -239,6 +239,10 @@ void loop() {
         taskScheduler.execute();
         LoopMqttClient();
     }
+
+    temperature1 = ReadTemperature(0);
+    temperature2 = ReadTemperature(1);
+
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
 }
 
@@ -278,8 +282,8 @@ void MonitorStatesTask(void *pvParameters) {
         // --- Monitor Alarms ---
         bool temp_alarm_active = false;
         bool rpm_alarm_active = false;
-        const double t1 = ReadTemperature(0);
-        const double t2 = ReadTemperature(1);
+        const double t1 = temperature1;
+        const double t2 = temperature2;
 
         for (int i = 0; i < ACTIVE_FANS; ++i) {
             int fan_id = a_FanIds[i];
@@ -323,8 +327,8 @@ void PlayAlarmsTask(void *pvParameters) {
 void ReadTemperaturesTask(void *pvParameters) {
     while (true) {
 
-        const double t1 = ReadTemperature(0);
-        const double t2 = ReadTemperature(1);
+        const double t1 = temperature1;
+        const double t2 = temperature2;
 
         if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
             Serial.printf("T1: %.2f C; T2: %.2f C\n", t1, t2);
@@ -423,8 +427,8 @@ void DisplayDataTask(void *pvParameters) {
 
             case ScreenView::Temperatures:
                 {
-                    double t1 = ReadTemperature(0);
-                    double t2 = ReadTemperature(1);
+                    double t1 = temperature1;
+                    double t2 = temperature2;
 
                     if (systemSettings.units == "F") {
                         if (t1 > -90.0) t1 = (t1 * 1.8) + 32;
@@ -496,8 +500,8 @@ void SendUsbTelemetry() {
 }
 
 std::string PrepareTelemetryPayload(const std::string& event) {
-    double t1 = ReadTemperature(0);
-    double t2 = ReadTemperature(1);
+    double t1 = temperature1;
+    double t2 = temperature2;
 
     if (systemSettings.units == "F") {
         if (t1 > -90.0) t1 = (t1 * 1.8) + 32;

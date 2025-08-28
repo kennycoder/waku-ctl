@@ -29,6 +29,7 @@
 #include "pins.h"
 
 // --- Global Variables ---
+extern double temperature1, temperature2;
 
 // System State
 extern unsigned long gHoldButtonCounter;

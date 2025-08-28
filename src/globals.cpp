@@ -3,6 +3,8 @@
 
 // --- Global Variable Definitions ---
 
+double temperature1 = 0, temperature2 = 0;
+
 // System State
 unsigned long gHoldButtonCounter = 0;
 bool b_TempAlarmFiring = false;

@@ -36,7 +36,7 @@ double ReadTemperature(int channel) {
 
     double celsius = kelvin - 273.15;
     
-    printf("Temperature on channel %d: %.2f C (Resistance: %.2f Ohm)\n", channel, celsius, resistance);
+    // printf("Temperature on channel %d: %.2f C (Resistance: %.2f Ohm)\n", channel, celsius, resistance);
 
     return celsius;
 }
