@@ -273,7 +273,7 @@ void MonitorButtonTask(void *pvParameters) {
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(250)); // Check ~4 times a second
+        vTaskDelay(pdMS_TO_TICKS(50)); // Check ~4 times a second
     }     
 }   
 

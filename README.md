@@ -1,4 +1,4 @@
-# waku-ctl
+# waku-ctl - The open source water cooling controller.
 
 ![waku-ctl banner](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/header.png)
 
@@ -66,3 +66,8 @@ The hardware is based on an ESP32-S3 N16R8 development board or a board with a s
 
 [<img src="media/ui-1.png" width="49%">](media/ui-1.png)
 [<img src="media/ui-2.png" width="49%">](media/ui-2.png)
+
+---
+
+_This project is dedicated to my dad, Alexander Danylchyk who taught me a lot and inspired me to pursure engineering as a carrer. You are dearly missed._
+
