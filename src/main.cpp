@@ -141,6 +141,7 @@ void InitializeFanCurves() {
             fan_doc["temp_th"] = m_SensorSettings[fan_id].temperature_alarm_threshold;
             fan_doc["duty_th"] = m_SensorSettings[fan_id].rpm_alarm_threshold;
             fan_doc["sud_dur"] = m_SensorSettings[fan_id].step_duration_seconds;
+            fan_doc["halt_on"] = m_SensorSettings[fan_id].halt_on;
 
             String settings_json;
             serializeJson(fan_doc, settings_json);
@@ -150,6 +151,7 @@ void InitializeFanCurves() {
             m_SensorSettings[fan_id].temperature_alarm_threshold = fan_doc["temp_th"].as<int>();
             m_SensorSettings[fan_id].rpm_alarm_threshold = fan_doc["duty_th"].as<int>();
             m_SensorSettings[fan_id].step_duration_seconds = fan_doc["sud_dur"].as<uint8_t>();
+            m_SensorSettings[fan_id].halt_on = fan_doc["halt_on"].as<uint8_t>();
             m_SensorSettings[fan_id].fan_speed_curve.clear();
             for (auto const& setting : fan_doc["curves"].as<JsonArray>()) {
                 m_SensorSettings[fan_id].fan_speed_curve.push_back({setting["temp"].as<float>(), setting["fan"].as<int>()});
@@ -293,12 +295,20 @@ void MonitorStatesTask(void *pvParameters) {
 
             // Temperature Alarm
             if (temp > 0 && settings.temperature_alarm_threshold > 0 && temp >= settings.temperature_alarm_threshold) {
+                if(settings.halt_on == HALT_ON_ALARM_TEMP || settings.halt_on == HALT_ON_ALARM_BOTH) {
+                    Serial.println("Halting system due to alarm condition.");
+                    digitalWrite(PIN_PWR, HIGH); // Cut power
+                }
                 temp_alarm_active = true;
                 if (!b_TempAlarmFiring) Serial.printf("ALARM: Temp high on %s (%.1fC)\n", settings.sensor_name.c_str(), temp);
             }
 
             // RPM Alarm (only if threshold is set, > 0)
             if (settings.rpm_alarm_threshold >= 0 && current_rpm < (unsigned long)settings.rpm_alarm_threshold) {
+                if(settings.halt_on == HALT_ON_ALARM_FAN || settings.halt_on == HALT_ON_ALARM_BOTH) {
+                    Serial.println("Halting system due to alarm condition.");
+                    digitalWrite(PIN_PWR, HIGH); // Cut power
+                }
                 rpm_alarm_active = true;
                 if (!b_RpmAlarmFiring) Serial.printf("ALARM: RPM low on FAN_%d (%lu RPM)\n", fan_id, current_rpm);
             }
@@ -319,6 +329,7 @@ void PlayAlarmsTask(void *pvParameters) {
             vTaskDelay(pdMS_TO_TICKS(1000));
         } else {
             noTone(PIN_BUZZER);
+            digitalWrite(PIN_PWR, LOW); // Stop cutting power, alarm turned off.
             vTaskDelay(pdMS_TO_TICKS(250));
         }
     }    
@@ -726,6 +737,7 @@ void InitializeHttpServer() {
             doc[fkey]["temp_th"] = value.temperature_alarm_threshold;
             doc[fkey]["duty_th"] = value.rpm_alarm_threshold;
             doc[fkey]["sud_dur"] = value.step_duration_seconds;
+            doc[fkey]["halt_on"] = value.halt_on;
             doc[fkey]["units"] = systemSettings.units;
             JsonArray curves = doc[fkey]["curves"].to<JsonArray>();
             for (const auto& setting : value.fan_speed_curve) {
@@ -758,6 +770,7 @@ void InitializeHttpServer() {
                 m_SensorSettings[fan_id].temperature_alarm_threshold = fan_doc["temp_th"].as<int>();
                 m_SensorSettings[fan_id].rpm_alarm_threshold = fan_doc["duty_th"].as<int>();
                 m_SensorSettings[fan_id].step_duration_seconds = fan_doc["sud_dur"].as<uint8_t>();
+                m_SensorSettings[fan_id].halt_on = fan_doc["halt_on"].as<uint8_t>();
                 m_SensorSettings[fan_id].fan_speed_curve.clear();
                 for (const auto& setting : fan_doc["curves"].as<JsonArray>()) {
                     m_SensorSettings[fan_id].fan_speed_curve.push_back({setting["temp"].as<float>(), setting["fan"].as<int>()});

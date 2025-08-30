@@ -8,6 +8,7 @@
 // --- System Pins ---
 constexpr uint8_t PIN_RESET_SETTINGS = 3;
 constexpr uint8_t PIN_BUZZER = 39;
+constexpr uint8_t PIN_PWR = 40; // Power control
 
 // --- I2C / Screen Pins ---
 constexpr int8_t PIN_SDA = 16; // GPIO8 as I2C SDA

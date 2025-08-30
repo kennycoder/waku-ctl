@@ -41,4 +41,11 @@ constexpr int MAX_LEDS_PER_STRIP = 64;
 constexpr int ACTIVE_THERMISTORS = 2;
 constexpr int ACTIVE_FANS = 4;
 
+
+// --- Other Constants ---
+constexpr int HALT_ON_ALARM_NONE = 0;
+constexpr int HALT_ON_ALARM_FAN = 1;   
+constexpr int HALT_ON_ALARM_TEMP = 2;
+constexpr int HALT_ON_ALARM_BOTH = 3;
+
 #endif // CONFIG_CONSTANTS_H

@@ -59,6 +59,8 @@ void InitializeOutputs() {
     pinMode(PIN_LED_HEADER_1, OUTPUT);
     pinMode(PIN_LED_HEADER_2, OUTPUT);
     pinMode(PIN_BUZZER, OUTPUT);
+    pinMode(PIN_PWR, OUTPUT);
+    digitalWrite(PIN_PWR, LOW);
 
     pinMode(PIN_LED_EXT_CTRL_1, OUTPUT);
     digitalWrite(PIN_LED_EXT_CTRL_1, LOW);

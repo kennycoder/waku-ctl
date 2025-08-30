@@ -184,7 +184,7 @@
               }
       
               for (const key in fan_data) {
-                createChart(key, fan_data[key]['curves'], fan_data[key]['sensor'], fan_data[key]['temp_th'], fan_data[key]['duty_th'], fan_data[key]['sud_dur'], units);
+                createChart(key, fan_data[key]['curves'], fan_data[key]['sensor'], fan_data[key]['temp_th'], fan_data[key]['duty_th'], fan_data[key]['sud_dur'], fan_data[key]['halt_on'], units);
               }
             }
           });
@@ -212,6 +212,11 @@
             fan_data['FAN_2']['sud_dur'] = $('#step-FAN_2').val();
             fan_data['FAN_3']['sud_dur'] = $('#step-FAN_3').val();
 
+            fan_data['FAN_0']['halt_on'] = $('#halt_on-FAN_0').val();
+            fan_data['FAN_1']['halt_on'] = $('#halt_on-FAN_1').val();
+            fan_data['FAN_2']['halt_on'] = $('#halt_on-FAN_2').val();
+            fan_data['FAN_3']['halt_on'] = $('#halt_on-FAN_3').val();
+
             $('#FAN_0').val(JSON.stringify(fan_data["FAN_0"]));
             $('#FAN_1').val(JSON.stringify(fan_data["FAN_1"]));
             $('#FAN_2').val(JSON.stringify(fan_data["FAN_2"]));
@@ -234,7 +239,7 @@
           });
         });
       
-        function createChart(key, data, active_sensor, active_temp_th, active_duty_th, active_sud_duration, units) {
+        function createChart(key, data, active_sensor, active_temp_th, active_duty_th, active_sud_duration, halt_on, units) {
           const chartControlsContainer = $('<div>').addClass('chart-controls-container').attr('id', `chart-controls-${key}`);
 
           const chartContainer = $('<div>').addClass('chart-container').attr('id', `chart-${key}`);
@@ -278,6 +283,15 @@
           }
           temp_select_label.appendTo(chartControlsContainer);
           temp_select.appendTo(chartControlsContainer);
+
+          const halt_select_label = $(`<label for="halt_on-${key}">Halt PC on:</label>`);
+          const halt_select = $(`<select style="bottom: 10px; right: 100px;"></select><br>`).attr('id', `halt-${key}`);
+          halt_select.append($('<option>', { value: 0, text : 'No halt', selected: halt_on == 0 }));
+          halt_select.append($('<option>', { value: 1, text : 'Halt on fan speed alarm', selected: halt_on == 1 }));
+          halt_select.append($('<option>', { value: 2, text : 'Halt on temperature alarm', selected: halt_on == 2 }));
+          halt_select.append($('<option>', { value: 3, text : 'Halt on both', selected: halt_on == 3 }));
+          halt_select_label.appendTo(chartControlsContainer);
+          halt_select.appendTo(chartControlsContainer);
 
           const stepupdown_select_label = $(`<label for="step-${key}">Step up/down duration:</label>`);
           const stepupdown_select = $(`<select style="bottom: 10px; right: 100px;"></select><br>`).attr('id', `step-${key}`);
