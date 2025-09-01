@@ -40,6 +40,11 @@ struct TemperatureSensorSettings {
   int rpm_alarm_threshold = -1;
   uint8_t step_duration_seconds = 1;
   uint8_t halt_on = 0; // 0: No halt, 1: Halt on fan speed alarm, 2: Halt on temperature alarm
+  uint8_t mode = 0; // 0: Curves, 1: PID
+  double pid_kp = 2;
+  double pid_ki = 5;
+  double pid_kd = 1;
+  double pid_setpoint = 40.0;
   std::vector<FanSpeedPoint> fan_speed_curve;
 };
 

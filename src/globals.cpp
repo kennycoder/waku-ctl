@@ -51,6 +51,8 @@ std::map<int, FanRpmTarget> m_TargetFanRpm = {
     {3, {0, 0, 0, 0, false}}
 };
 
+std::map<int, double> m_PidOutputs;
+
 std::map<int, FanPinPair> PIN_FAN_MAP = {
     {0, {14, 13}},
     {1, {12, 11}},

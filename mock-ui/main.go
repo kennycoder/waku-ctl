@@ -83,7 +83,10 @@ func main() {
 
 	http.HandleFunc("/get-curves", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
-		fmt.Fprintf(w, `{"FAN_0": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, "FAN_1": {"units": "C", "curves": [], "sensor": "TEMP_1"}, "FAN_2": {"units": "C", "curves": [], "sensor": "TEMP_1"}, "FAN_3": {"units": "C", "curves": [], "sensor": "TEMP_1"}}`)
+		fmt.Fprintf(w, `{"FAN_0": {"mode": "pid", "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_1": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_2": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_3": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}}`)
 	})
 
 	http.HandleFunc("/get-rgb", func(w http.ResponseWriter, r *http.Request) {

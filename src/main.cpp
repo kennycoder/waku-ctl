@@ -5,8 +5,10 @@
 #include "mqtt_manager.h"
 #include "peripherals_manager.h"
 #include "led_manager.h"
+#include <PID_v1.h>
 
 Task *gSendTelemetryTask = nullptr;
+TaskHandle_t gProcessPIDControllerTaskHandle = NULL;
 Scheduler taskScheduler;
 
 // --- Function Prototypes ---
@@ -28,7 +30,8 @@ void loop();
 // Tasks
 void MonitorButtonTask(void *pvParameters);
 void MonitorStatesTask(void *pvParameters);
-void ReadTemperaturesTask(void *pvParameters);
+void ProcessTemperatureCurvesTask(void *pvParameters);
+void ProcessPIDControllerTask(void *pvParameters);
 void PlayLedsTask(void *pvParameters);
 void DisplayDataTask(void *pvParameters);
 void NativeUsbTelemetryTask(void *pvParameters);
@@ -96,12 +99,14 @@ void SaveConfig(const Settings& s) {
 
 
 void InitializeTasks() {
+
     xTaskCreate(MonitorStatesTask, "MonitorStates", 4096, NULL, 6, NULL);
-    xTaskCreate(ReadTemperaturesTask, "ReadTemps", 4096, NULL, 5, NULL);
+    xTaskCreate(ProcessTemperatureCurvesTask, "ReadTemps", 4096, NULL, 5, NULL);
     xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 4, NULL);
     xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
     xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
     xTaskCreate(PlayAlarmsTask, "PlayAlarms", 2048, NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
 
     InitializeMqttTelemetryTask(taskScheduler, gSendTelemetryTask);
     Serial.println("Tasks initialized.");
@@ -142,6 +147,11 @@ void InitializeFanCurves() {
             fan_doc["duty_th"] = m_SensorSettings[fan_id].rpm_alarm_threshold;
             fan_doc["sud_dur"] = m_SensorSettings[fan_id].step_duration_seconds;
             fan_doc["halt_on"] = m_SensorSettings[fan_id].halt_on;
+            fan_doc["mode"] = m_SensorSettings[fan_id].mode;
+            fan_doc["pid_kp"] = m_SensorSettings[fan_id].pid_kp;
+            fan_doc["pid_ki"] = m_SensorSettings[fan_id].pid_ki;
+            fan_doc["pid_kd"] = m_SensorSettings[fan_id].pid_kd;
+            fan_doc["pid_setpoint"] = m_SensorSettings[fan_id].pid_setpoint;
 
             String settings_json;
             serializeJson(fan_doc, settings_json);
@@ -152,6 +162,11 @@ void InitializeFanCurves() {
             m_SensorSettings[fan_id].rpm_alarm_threshold = fan_doc["duty_th"].as<int>();
             m_SensorSettings[fan_id].step_duration_seconds = fan_doc["sud_dur"].as<uint8_t>();
             m_SensorSettings[fan_id].halt_on = fan_doc["halt_on"].as<uint8_t>();
+            m_SensorSettings[fan_id].mode = fan_doc["mode"].as<uint8_t>();
+            m_SensorSettings[fan_id].pid_kp = fan_doc["pid_kp"].as<double>();
+            m_SensorSettings[fan_id].pid_ki = fan_doc["pid_ki"].as<double>();
+            m_SensorSettings[fan_id].pid_kd = fan_doc["pid_kd"].as<double>();
+            m_SensorSettings[fan_id].pid_setpoint = fan_doc["pid_setpoint"].as<double>();
             m_SensorSettings[fan_id].fan_speed_curve.clear();
             for (auto const& setting : fan_doc["curves"].as<JsonArray>()) {
                 m_SensorSettings[fan_id].fan_speed_curve.push_back({setting["temp"].as<float>(), setting["fan"].as<int>()});
@@ -240,10 +255,10 @@ void loop() {
     if(b_BootCompleted) {
         taskScheduler.execute();
         LoopMqttClient();
-    }
 
-    temperature1 = ReadTemperature(0);
-    temperature2 = ReadTemperature(1);
+        temperature1 = ReadTemperature(0);
+        temperature2 = ReadTemperature(1);
+    }
 
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
 }
@@ -335,7 +350,7 @@ void PlayAlarmsTask(void *pvParameters) {
     }    
 }
 
-void ReadTemperaturesTask(void *pvParameters) {
+void ProcessTemperatureCurvesTask(void *pvParameters) {
     while (true) {
 
         const double t1 = temperature1;
@@ -345,8 +360,13 @@ void ReadTemperaturesTask(void *pvParameters) {
             Serial.printf("T1: %.2f C; T2: %.2f C\n", t1, t2);
         }
 
-        for (int i = 0; i < ACTIVE_FANS; ++i) {
+        for (int i = 0; i < ACTIVE_FANS; ++i) {            
             int fan_id = a_FanIds[i];
+
+            if (m_SensorSettings[fan_id].mode == 0) { // Only run if in curve mode
+                continue; // Skip to next fan
+            }
+
             a_CurrentFanSpeedsRpm[i] = ReadFanRpm(i); // Use index 'i' for ReadFanRpm
 
             const auto& settings = m_SensorSettings[fan_id];
@@ -407,6 +427,41 @@ void ReadTemperaturesTask(void *pvParameters) {
             }
         }
         vTaskDelay(pdMS_TO_TICKS(250)); // Read temps/adjust fans twice a second
+    }
+}
+
+void ProcessPIDControllerTask(void *pvParameters)
+{
+    std::map<int, PID> pidControllers;
+
+    for (int i = 0; i < ACTIVE_FANS; ++i)
+    {
+        int fan_id = a_FanIds[i];
+        if (m_SensorSettings[fan_id].mode == 1)
+        {
+            const auto &settings = m_SensorSettings[fan_id];
+            double *input = (settings.sensor_name == "TEMP_1") ? &temperature1 : &temperature2;
+            m_PidOutputs[fan_id] = 0;
+            double *output = &m_PidOutputs[fan_id];
+            double *setpoint = new double;
+            *setpoint = settings.pid_setpoint;
+
+            pidControllers.emplace(fan_id, PID(input, output, setpoint, settings.pid_kp, settings.pid_ki, settings.pid_kd, DIRECT));
+            pidControllers.at(fan_id).SetMode(AUTOMATIC);
+            pidControllers.at(fan_id).SetOutputLimits(0, 255);
+        }
+    }
+
+    while (true)
+    {
+        for (auto &pair : pidControllers)
+        {
+            int fan_id = pair.first;
+            PID &controller = pair.second;
+            controller.Compute();
+            ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, (int)m_PidOutputs[fan_id]);
+        }
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
 }
 
@@ -739,6 +794,11 @@ void InitializeHttpServer() {
             doc[fkey]["sud_dur"] = value.step_duration_seconds;
             doc[fkey]["halt_on"] = value.halt_on;
             doc[fkey]["units"] = systemSettings.units;
+            doc[fkey]["mode"] = value.mode;
+            doc[fkey]["pid_kp"] = value.pid_kp;
+            doc[fkey]["pid_ki"] = value.pid_ki;
+            doc[fkey]["pid_kd"] = value.pid_kd;
+            doc[fkey]["pid_setpoint"] = value.pid_setpoint;
             JsonArray curves = doc[fkey]["curves"].to<JsonArray>();
             for (const auto& setting : value.fan_speed_curve) {
                 JsonObject point = curves.add<JsonObject>();
@@ -771,6 +831,11 @@ void InitializeHttpServer() {
                 m_SensorSettings[fan_id].rpm_alarm_threshold = fan_doc["duty_th"].as<int>();
                 m_SensorSettings[fan_id].step_duration_seconds = fan_doc["sud_dur"].as<uint8_t>();
                 m_SensorSettings[fan_id].halt_on = fan_doc["halt_on"].as<uint8_t>();
+                m_SensorSettings[fan_id].mode = fan_doc["mode"].as<uint8_t>();
+                m_SensorSettings[fan_id].pid_kp = fan_doc["pid_kp"].as<double>();
+                m_SensorSettings[fan_id].pid_ki = fan_doc["pid_ki"].as<double>();
+                m_SensorSettings[fan_id].pid_kd = fan_doc["pid_kd"].as<double>();
+                m_SensorSettings[fan_id].pid_setpoint = fan_doc["pid_setpoint"].as<double>();
                 m_SensorSettings[fan_id].fan_speed_curve.clear();
                 for (const auto& setting : fan_doc["curves"].as<JsonArray>()) {
                     m_SensorSettings[fan_id].fan_speed_curve.push_back({setting["temp"].as<float>(), setting["fan"].as<int>()});
@@ -778,6 +843,13 @@ void InitializeHttpServer() {
             }
         }
         request->send(200, "application/json", "{\"status\": \"curves_saved\"}");
+
+        // Restart PID task to apply new settings
+        if (gProcessPIDControllerTaskHandle != NULL) {
+            vTaskDelete(gProcessPIDControllerTaskHandle);
+            gProcessPIDControllerTaskHandle = NULL; // Important to avoid using a stale handle
+        }
+        xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
     });
 
 
