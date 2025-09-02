@@ -12,7 +12,11 @@ If you find waku-ctl useful, please consider supporting its development through 
 
 [**Support waku-ctl on Kickstarter!**](https://www.kickstarter.com/projects/nikolaidan/waku-ctl-the-open-source-water-cooling-controller/)
 
-## Project Structure
+## Features
+
+1. 
+
+## Structure
 
 *   `/pcb`: Contains the PCB design files from Altium.
 *   `/case`: Contains the STL files for the 3D printable case.
@@ -21,6 +25,34 @@ If you find waku-ctl useful, please consider supporting its development through 
 *   `/usb-cdc-daemon`: Contains a small system tray daemon that reads data via USB and submits it to HWiNFO64.
 
 The firmware is developed using Visual Studio Code with the PlatformIO extension.
+
+## Features
+
+*   **Web Interface:** A user-friendly web interface for configuration and monitoring.
+*   **Fan Control:**
+    *   Control up to 4 fans/pumps.
+    *   Customizable fan curves based on temperature readings.
+    *   PID controller for precise temperature management.
+    *   Set alarms for fan RPM and temperature thresholds.
+    *   Configure step up/down duration for smooth fan speed transitions.
+    *   Option to halt the PC on alarm conditions.
+*   **Temperature Monitoring:**
+    *   Supports two temperature sensors.
+    *   Display temperatures in Celsius or Fahrenheit.
+*   **ARGB Lighting Control:**
+    *   Control two separate ARGB headers.
+    *   Multiple lighting effects: Static, 2-color wave, 2-color moving, and rainbow.
+    *   Pass-through mode from an external ARGB source.
+    *   Adjust effect speed and the number of LEDs.
+*   **Connectivity:**
+    *   WiFi connectivity with support for offline (Access Point) mode.
+    *   MQTT support for telemetry data.
+    *   USB-CDC daemon for HWiNFO64 integration.
+*   **On-device Display:**
+    *   OLED screen to display system status, temperatures, fan speeds, and RGB modes.
+*   **Hardware:**
+    *   Open-source PCB and 3D printable case design.
+    *   Based on the powerful ESP32-S3 microcontroller.
 
 ## Building the Firmware
 
