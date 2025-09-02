@@ -186,14 +186,14 @@
           `);
           fanContainer.append(tabsContainer);
 
-          const controlsContainer = $('<div>').addClass('chart-controls-container').attr('id', `chart-controls-${key}`);
+          const controlsContainer = $('<div>').addClass('chart-controls-container form-grid').attr('id', `chart-controls-${key}`);
           const chartContainer = $('<div>').addClass('chart-container').attr('id', `chart-${key}`);
           chartContainer.append(`<h3 style="position: absolute; opacity: 30%; margin-inline: auto; width: fit-content; left:0; right:0; top: 50%; transform: translateY(-50%); user-select: none;">${fanLabelOverride}</h3>`);
           
           const svg = $(`<svg width="100%" height="100%"></svg>`).attr('id', `svg-${key}`).appendTo(chartContainer);
 
           const temp_src_select_label = $(`<label for="sensor_id-${key}">Temperature source:</label>`);
-          const temp_src_select = $(`<select style="bottom: 10px; right: 10px;"></select><br>`).attr('id', `sensor_id-${key}`)
+          const temp_src_select = $(`<select style="bottom: 10px; right: 10px;"></select>`).attr('id', `sensor_id-${key}`)
           for (const t_sensor of available_sensors) {
             temp_src_select.append($('<option>', { 
               value: t_sensor,
@@ -212,7 +212,6 @@
           }
           rpm_select_label.appendTo(controlsContainer);
           rpm_select.appendTo(controlsContainer);
-          $(`<br>`).appendTo(controlsContainer);
 
           const temp_select_label = $(`<label for="temp_th-${key}">Temperature alarm:</label>`);
           const temp_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `temp_th-${key}`);
@@ -228,7 +227,6 @@
           }
           temp_select_label.appendTo(controlsContainer);
           temp_select.appendTo(controlsContainer);
-          $(`<br>`).appendTo(controlsContainer);
 
           const halt_select_label = $(`<label for="halt_on-${key}">Halt PC on:</label>`);
           const halt_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `halt-${key}`);
@@ -238,7 +236,6 @@
           halt_select.append($('<option>', { value: 3, text : 'Halt on both', selected: halt_on == 3 }));
           halt_select_label.appendTo(controlsContainer);
           halt_select.appendTo(controlsContainer);
-          $(`<br>`).appendTo(controlsContainer);
 
           const stepupdown_select_label = $(`<label for="step-${key}">Step up/down duration:</label>`);
           const stepupdown_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `step-${key}`);
@@ -247,22 +244,21 @@
           }
           stepupdown_select_label.appendTo(controlsContainer);
           stepupdown_select.appendTo(controlsContainer);
-          $(`<br>`).appendTo(controlsContainer);
 
-          $('<hr>').appendTo(controlsContainer);
+          $('<hr style="grid-column: 1 / -1;">').appendTo(controlsContainer);
 
           $('#tab-curve-' + key).append(chartContainer);
 
           const pidControlsContainer = $(`
-            <div class="pid-controls" id="pid-controls-${key}" style="display: block;">
+            <div class="pid-controls form-grid" id="pid-controls-${key}" style="display: grid; gap: 15px 10px;">
               <label for="pid_target-${key}">Target Temperature (°${units}):</label>
-              <input type="number" id="pid_setpoint-${key}" value="${pid_setpoint || 30}"><br>
+              <input type="number" id="pid_setpoint-${key}" value="${pid_setpoint || 30}">
               <label for="pid_p-${key}" title="Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0">Reaction Speed:</label>
-              <input type="number" id="pid_kp-${key}" step="0.1" value="${pid_kp || 1.0}" min="0.1" max="10.0"><br>
+              <input type="number" id="pid_kp-${key}" step="0.1" value="${pid_kp || 1.0}" min="0.1" max="10.0">
               <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0">Correction Strength:</label>
-              <input type="number" id="pid_ki-${key}" step="0.1" value="${pid_ki || 0.1}" min="0.0" max="10.0"><br>
+              <input type="number" id="pid_ki-${key}" step="0.1" value="${pid_ki || 0.1}" min="0.0" max="10.0">
               <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0">Stability:</label>
-              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0"><br>
+              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0">
             </div>
           `);
           $('#tab-pid-' + key).append(pidControlsContainer);

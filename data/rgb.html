@@ -25,9 +25,8 @@
     <div class="card">
       <h1>RGB Control</h1>
 
-      <form id="rgb-form">
+      <form id="rgb-form" class="form-grid" style="gap: 15px 10px;">
         <label for="mode_led_0">Operation mode for ARGB header #1:</label>
-        <br>
         <select name="mode_led_0" id="mode_led_0">
           <option value="0">Off</option>
           <option value="1">Static single color</option>
@@ -36,7 +35,6 @@
           <option value="4">Rainbow effect</option>
           <option value="5">Pass-through from the external source</option>
         </select>
-        <br><br>
         <label for="num_leds_led_0">Amount of LEDs on the strip (<span id="num_leds_led_0_val">32</span>):</label>
         <input type="range" min="1" max="64" value="10" class="slider" id="num_leds_led_0" name="num_leds_led_0">
         <label for="start_color_led_0">ARGB 1 Color 1:</label>
@@ -46,10 +44,9 @@
         <label for="speed_led_0">Effect speed (<span id="speed_led_0_val">32</span>):</label>
         <input type="range" min="1" max="100" value="11" class="slider" id="speed_led_0" name="speed_led_0">
 
-        <hr>
+        <hr style="grid-column: 1 / -1;">
         
         <label for="mode_led_1">Operation mode for ARGB header #2:</label>
-        <br>
         <select name="mode_led_1" id="mode_led_1">
           <option value="0">Off</option>
           <option value="1">Static single color</option>
@@ -58,19 +55,16 @@
           <option value="4">Rainbow effect</option>
           <option value="5">Pass-through from the external source</option>
         </select>
-        <br><br>
         <label for="num_leds_led_1">Amount of LEDs on the strip (<span id="num_leds_led_1_val">32</span>):</label>
         <input type="range" min="1" max="64" value="12" class="slider" id="num_leds_led_1" name="num_leds_led_1">
-        <br><br>
         <label for="start_color_led_1">ARGB 2 Color 1:</label>
         <input type="color" id="start_color_led_1" name="start_color_led_1" value="#0000ff">
         <label for="end_color_led_1">ARGB 2 Color 2:</label>
         <input type="color" id="end_color_led_1" name="end_color_led_1" value="#ff0000">
         <label for="speed_led_1">Effect speed (<span id="speed_led_1_val">32</span>):</label>
         <input type="range" min="1" max="100" value="13" class="slider" id="speed_led_1" name="speed_led_1">
-        <br><br>
 
-        <button type="submit">Save Colors</button>
+        <button type="submit" style="grid-column: 2;">Save Colors</button>
       </form>
     </div>
   </div>
@@ -94,6 +88,7 @@
               value = name.includes("color") ? toHexColorString(value) : value;
               $("#" + name + "_" + led_id).val(value);
 
+              console.log(name, led_id, value);
               if($("#" + name + "_" + led_id + "_val").length) {
                 $("#" + name + "_" + led_id + "_val").text(value);
               }

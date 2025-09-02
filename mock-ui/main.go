@@ -99,7 +99,7 @@ func main() {
 		h3 := fmt.Sprintf("%x", 7134613)
 		h4 := fmt.Sprintf("%x", 5847134)
 
-		fmt.Fprintf(w, `{"LED_1": {"mode": 2, "speed": 69, "start_color": "#%s", "end_color": "#%s", "num_leds": 16}, "LED_2": {"mode": 1, "speed": 69, "start_color": "#%s", "end_color": "#%s", "num_leds": 59}}`, h1, h2, h3, h4)
+		fmt.Fprintf(w, `{"LED_0": {"mode": 2, "speed": 69, "start_color": "%s", "end_color": "%s", "num_leds": 16}, "LED_1": {"mode": 1, "speed": 69, "start_color": "%s", "end_color": "%s", "num_leds": 59}}`, h1, h2, h3, h4)
 	})
 
 	http.HandleFunc("/get-data", func(w http.ResponseWriter, r *http.Request) {

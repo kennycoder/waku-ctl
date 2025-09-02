@@ -26,7 +26,7 @@
     <div class="card">
       <h1>WiFi Setup</h1>
 
-      <form id="wifi-form">
+      <form id="wifi-form" class="form-grid" style="gap: 15px 10px;">
         <label for="ssid">WiFi Network:</label>
         <select id="ssid" name="ssid">
           <option value="">Scanning your WiFi networks, please wait..</option>
@@ -44,11 +44,10 @@
           <option value="F">Farenheit</option>
         </select>
 
-        <hr>
-        <input type="checkbox" id="mqtt_enable" name="mqtt_enable" value="true" disabled>
-        <label style="display: inline" for="mqtt_enable">Enable sending telemetry via MQTT</label>
-        <br><br>
-
+        <hr style="grid-column: 1 / -1;">
+        <label style="text-align: right;" for="mqtt_enable">Enable sending telemetry via MQTT</label>
+        <input type="checkbox" id="mqtt_enable" name="mqtt_enable" value="true" disabled  style="width: min-content;">
+        
         <label for="mqtt_broker">MQTT Broker:</label>
         <input type="text" id="mqtt_broker" name="mqtt_broker">
 
@@ -75,7 +74,7 @@
         <input type="hidden" id="force_reboot" name="force_reboot" value="true">
         <input type="hidden" id="offline_mode" name="offline_mode" value="true">
 
-        <button type="submit">Save</button>
+        <button type="submit" style="grid-column: 2;">Save</button>
       </form>
       <hr>
       <button id="reset" style="background-color: red">Factory Reset</button>
