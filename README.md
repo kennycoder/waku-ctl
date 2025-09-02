@@ -57,6 +57,7 @@ The hardware is based on an ESP32-S3 N16R8 development board or a board with a s
 | Schmitt Trigger                               | 1        | HTC Korea TAEJIN Tech       | 74HC14D                    |
 | Reset Button                                  | 1        | Omron                       | B3FS-1000P                 |
 | Passive Speaker/Buzzer                        | 1        | XHXDZ                       | HC9042-16                  |
+| Phototransistor SMD-4P Transistor             | 1        | Sharp Microelectronics      | PC817X3CSP9F               |
 
 ### PCB layout
 
@@ -69,5 +70,5 @@ The hardware is based on an ESP32-S3 N16R8 development board or a board with a s
 
 ---
 
-_This project is dedicated to my dad, Alexander Danylchyk who taught me a lot and inspired me to pursure engineering as a carrer. You are dearly missed._
+_This project is dedicated to my dad, Alexander Danylchyk who taught me a lot and inspired me to pursue an engineering carrer. You are dearly missed._
 

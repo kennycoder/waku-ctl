@@ -1,208 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>WaKu-ctl - Fan curves configuration</title>
+<title>WaKu-ctl - Fans & Temperatures configuration</title>
 <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
 <script src="/all-jquery-deps.min.js"></script>
 <meta charset="utf-8">
-<style>
-  body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f5f5f5;
-    margin: 0;
-    padding: 0;
-    display: flex;
-  }
-
-  hr {
-    background-color: #ccc;
-    border: 0 none;
-    color: #ccc;
-    height: 1px;
-  }
-
-  .sidebar {
-    width: 250px;
-    padding: 20px;
-  }
-
-  .sidebar a {
-    display: block;
-    padding: 10px 20px;
-    text-decoration: none;
-    color: #333;
-    border-left: 4px solid transparent;
-    transition: border-left-color 0.3s ease;
-  }
-
-  .sidebar a:hover {
-    border-left-color: #2196f3;
-  }
-
-  .sidebar .active {
-    border-left-color: #21f32f;
-  }
-
-  .sidebar .logo-container {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-
-  .sidebar .logo-container img {
-    max-width: 100px; /* Adjust as needed */
-    margin-bottom: 10px;
-  }
-  .sidebar .project-name {
-    font-size: 2.2em;
-    font-weight: bold;
-    color: #333;
-  }
-  
-  .content {
-    flex-grow: 1;
-    padding: 20px;
-  }
-
-  .card {
-    background-color: #fff;
-    padding: 32px;
-    border-radius: 4px;
-    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
-  }
-
-  h1 {
-    font-size: 2em;
-    margin-bottom: 24px;
-  }
-
-  .chart-controls-container {
-    margin: 10px 20px 0 20px ;
-  }
-
-  .chart-controls-container select {
-    margin: 0 5px 10px 0;
-  }
-
-  .pid-controls {
-    margin: 10px 20px 0 20px ;
-    padding: 10px 10px 0px 10px ;
-    border: 1px dotted #000;
-    display: none;
-  }
-
-  .pid-controls input {
-    display: inline-block;
-    margin-bottom: 10px ;
-  }  
-
-  .chart-container {
-      display: inline-block;
-      width: 640px;
-      height: 320px;
-      margin: 20px;
-      border: 1px solid #ccc;
-      position: relative;
-    }
-    .chart-container h3 {
-      text-align: center;
-      margin-top: 0;
-    }
-    .dot {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      background-color: blue;
-      border-radius: 50%;
-      cursor: move;
-      touch-action: none;
-    }
-    .dot-info {
-      background-color: white;
-      border: 1px solid black;
-      font-size: 10px;
-      font-weight: bold;
-      width: auto;
-      position: absolute;
-      left: 10px;
-      user-select: none;
-      padding: 4px;
-      white-space: nowrap;
-    }
-    .line {
-      stroke: blue;
-      stroke-width: 2;
-    }
-
-    button {
-      background-color: #2196f3;
-      color: #fff;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 34px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
-
-    input:checked + .slider {
-      background-color: #2196F3;
-    }
-
-    input:focus + .slider {
-      box-shadow: 0 0 1px #2196F3;
-    }
-
-    input:checked + .slider:before {
-      -webkit-transform: translateX(26px);
-      -ms-transform: translateX(26px);
-      transform: translateX(26px);
-    }
-
-    /* Rounded sliders */
-    .slider.round {
-      border-radius: 34px;
-    }
-
-    .slider.round:before {
-      border-radius: 50%;
-    }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
@@ -213,7 +16,7 @@
       </div>
       <h2>Menu</h2>
       <a href="/">Home</a>
-      <a href="/fans" class="active">Fan Curves</a>
+      <a href="/fans" class="active">Fans & Temperatures</a>
       <a href="/rgb">ARGB Lighting</a>
       <a href="/settings">Settings</a>
     </div>
@@ -221,7 +24,7 @@
 
   <div class="content">
     <div class="card">
-      <h1>Fan Curves</h1>
+      <h1>Fans & Temperatures</h1>
 
       <form id="fan-curves" class="fans-config">
         <div id="charts"></div>
@@ -258,19 +61,6 @@
               for (const key in fan_data) {
                 createChart(key, fan_data[key]);
               }
-
-              $('.mode-toggle').change(function() {
-                var fanId = $(this).data('fan');
-                if (this.checked) {
-                  $(`#chart-${fanId}`).hide();
-                  $(`#pid-controls-${fanId}`).css("display", "inline-block");
-                  fan_data[fanId]['mode'] = 'pid';
-                } else {
-                  $(`#chart-${fanId}`).show();
-                  $(`#pid-controls-${fanId}`).hide();
-                  fan_data[fanId]['mode'] = 'curve';
-                }
-              });
             }
           });
       
@@ -322,6 +112,26 @@
             fan_data['FAN_2']['halt_on'] = $('#halt_on-FAN_2').val();
             fan_data['FAN_3']['halt_on'] = $('#halt_on-FAN_3').val();
 
+            fan_data['FAN_0']['pid_kp'] = $('#pid_kp-FAN_0').val();
+            fan_data['FAN_1']['pid_kp'] = $('#pid_kp-FAN_1').val();
+            fan_data['FAN_2']['pid_kp'] = $('#pid_kp-FAN_2').val();
+            fan_data['FAN_3']['pid_kp'] = $('#pid_kp-FAN_3').val();
+
+            fan_data['FAN_0']['pid_kd'] = $('#pid_kd-FAN_0').val();
+            fan_data['FAN_1']['pid_kd'] = $('#pid_kd-FAN_1').val();
+            fan_data['FAN_2']['pid_kd'] = $('#pid_kd-FAN_2').val();
+            fan_data['FAN_3']['pid_kd'] = $('#pid_kd-FAN_3').val();
+            
+            fan_data['FAN_0']['pid_ki'] = $('#pid_ki-FAN_0').val();
+            fan_data['FAN_1']['pid_ki'] = $('#pid_ki-FAN_1').val();
+            fan_data['FAN_2']['pid_ki'] = $('#pid_ki-FAN_2').val();
+            fan_data['FAN_3']['pid_ki'] = $('#pid_ki-FAN_3').val();
+            
+            fan_data['FAN_0']['pid_setpoint'] = $('#pid_setpoint-FAN_0').val();
+            fan_data['FAN_1']['pid_setpoint'] = $('#pid_setpoint-FAN_1').val();
+            fan_data['FAN_2']['pid_setpoint'] = $('#pid_setpoint-FAN_2').val();
+            fan_data['FAN_3']['pid_setpoint'] = $('#pid_setpoint-FAN_3').val();            
+
             $('#FAN_0').val(JSON.stringify(fan_data["FAN_0"]));
             $('#FAN_1').val(JSON.stringify(fan_data["FAN_1"]));
             $('#FAN_2').val(JSON.stringify(fan_data["FAN_2"]));
@@ -333,11 +143,11 @@
               data: $(this).serialize(),
               success: function(response) {
                 // Handle successful setup (e.g., display a success message)
-                alert('Fan curves saved successfully!');
+                alert('Fans & Temperatures saved successfully!');
               },
               error: function(error) {
                 // Handle setup errors (e.g., display an error message)
-                alert('Fan curves saving failed: ' + error.responseText);
+                alert('Fans & Temperatures saving failed: ' + error.responseText);
               }
             });
             return false; // Prevent default form submission
@@ -352,26 +162,32 @@
           const active_sud_duration = fanData['sud_dur'];
           const halt_on = fanData['halt_on'];
           const units = fanData['units'];
-          const mode = fanData['mode'] || 'curve';
+          const mode = fanData['mode'];
+
+          const pid_kp = fanData['pid_kp'];
+          const pid_ki = fanData['pid_ki'];
+          const pid_kd = fanData['pid_kd'];
+          const pid_setpoint = fanData['pid_setpoint'];
 
           const fanContainer = $('<div>').addClass('fan-container').attr('id', `fan-container-${key}`);
           $('#charts').append(fanContainer);
 
-          const modeToggleContainer = $(`
-            <div>
-              <span>Fan Curve</span>
-              <label class="switch">
-                <input type="checkbox" class="mode-toggle" data-fan="${key}" ${mode === 'pid' ? 'checked' : ''}>
-                <span class="slider round"></span>
-              </label>
-              <span>PID Control</span>
+          var fanLabelOverride = (key == "FAN_0") ? "FAN_PUMP" : key;
+
+          const tabsContainer = $(`
+            <div id="tabs-${key}">
+              <ul>
+                <li><a href="#tab-curve-${key}">Temperature Curve (${fanLabelOverride})</a></li>
+                <li><a href="#tab-pid-${key}">PID Control (FAN_${fanLabelOverride})</a></li>
+              </ul>
+              <div id="tab-curve-${key}"></div>
+              <div id="tab-pid-${key}"></div>
             </div>
           `);
-          fanContainer.append(modeToggleContainer);
+          fanContainer.append(tabsContainer);
 
           const controlsContainer = $('<div>').addClass('chart-controls-container').attr('id', `chart-controls-${key}`);
           const chartContainer = $('<div>').addClass('chart-container').attr('id', `chart-${key}`);
-          var fanLabelOverride = (key == "FAN_0") ? "FAN_PUMP" : key;
           chartContainer.append(`<h3 style="position: absolute; opacity: 30%; margin-inline: auto; width: fit-content; left:0; right:0; top: 50%; transform: translateY(-50%); user-select: none;">${fanLabelOverride}</h3>`);
           
           const svg = $(`<svg width="100%" height="100%"></svg>`).attr('id', `svg-${key}`).appendTo(chartContainer);
@@ -435,21 +251,21 @@
 
           $('<hr>').appendTo(controlsContainer);
 
-          fanContainer.append(chartContainer);
+          $('#tab-curve-' + key).append(chartContainer);
 
           const pidControlsContainer = $(`
-            <div class="pid-controls" id="pid-controls-${key}">
+            <div class="pid-controls" id="pid-controls-${key}" style="display: block;">
               <label for="pid_target-${key}">Target Temperature (°${units}):</label>
-              <input type="number" id="pid_target-${key}" value="${fanData.pid_target || 40}"><br>
+              <input type="number" id="pid_setpoint-${key}" value="${pid_setpoint || 30}"><br>
               <label for="pid_p-${key}" title="Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0">Reaction Speed:</label>
-              <input type="number" id="pid_p-${key}" step="0.1" value="${fanData.pid_p || 1.0}" min="0.1" max="10.0"><br>
-              <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 1.0">Correction Strength:</label>
-              <input type="number" id="pid_i-${key}" step="0.1" value="${fanData.pid_i || 0.1}" min="0.0" max="1.0"><br>
-              <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 5.0">Stability:</label>
-              <input type="number" id="pid_d-${key}" step="0.1" value="${fanData.pid_d || 0.5}" min="0.0" max="5.0"><br>
+              <input type="number" id="pid_kp-${key}" step="0.1" value="${pid_kp || 1.0}" min="0.1" max="10.0"><br>
+              <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0">Correction Strength:</label>
+              <input type="number" id="pid_ki-${key}" step="0.1" value="${pid_ki || 0.1}" min="0.0" max="10.0"><br>
+              <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0">Stability:</label>
+              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0"><br>
             </div>
           `);
-          fanContainer.append(pidControlsContainer);
+          $('#tab-pid-' + key).append(pidControlsContainer);
 
           fanContainer.append(controlsContainer);
 
@@ -621,14 +437,12 @@
               .appendTo(dot);            
           });
 
-          if (mode === 'pid') {
-            chartContainer.hide();
-            pidControlsContainer.css('display', 'inline-block');
-          } else {
-            chartContainer.show();
-            pidControlsContainer.hide();
-          }
-    
+          $(`#tabs-${key}`).tabs({
+            active: mode,
+            activate: function(event, ui) {
+              fan_data[key]['mode'] = ui.newTab.index();
+            }
+          });
         }
       
         function calculateContainment(data, index, svg, scaleX, scaleY) {

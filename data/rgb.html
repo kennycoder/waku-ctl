@@ -5,111 +5,7 @@
 <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
 <script src="/all-jquery-deps.min.js"></script>
 <meta charset="utf-8">
-<style>
-  body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f5f5f5;
-    margin: 0;
-    padding: 0;
-    display: flex;
-  }
-
-  .sidebar {
-    width: 250px;
-    padding: 20px;
-  }
-
-  .sidebar a {
-    display: block;
-    padding: 10px 20px;
-    text-decoration: none;
-    color: #333;
-    border-left: 4px solid transparent;
-    transition: border-left-color 0.3s ease;
-  }
-
-  .sidebar a:hover {
-    border-left-color: #2196f3;
-  }
-
-  .sidebar .active {
-    border-left-color: #21f32f;
-  }
-
-  .sidebar .logo-container {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-
-  .sidebar .logo-container img {
-    max-width: 100px; /* Adjust as needed */
-    margin-bottom: 10px;
-  }
-  .sidebar .project-name {
-    font-size: 2.2em;
-    font-weight: bold;
-    color: #333;
-  }
-
-  .content {
-    flex-grow: 1;
-    padding: 20px;
-  }
-
-  .card {
-    background-color: #fff;
-    padding: 32px;
-    border-radius: 4px;
-    box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
-  }
-
-  h1 {
-    font-size: 2em;
-    margin-bottom: 24px;
-  }
-
-  select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z' fill='%23757575'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 16px 12px;
-  }
-
-    button {
-      background-color: #2196f3;
-      color: #fff;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }  
-
-  /* Style for color input elements */
-  input[type="color"] {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    width: 100%; /* Full width */
-    height: 40px; /* Specified height */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    margin-bottom: 16px;
-    padding: 0; /* Remove default padding */
-  }
-
-  /* Optional: Style for color input thumb */
-  input[type="color"]::-webkit-color-swatch-wrapper {
-    padding: 0;
-  }
-
-  input[type="color"]::-webkit-color-swatch {
-    border: none;
-    border-radius: 4px;
-  }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="sidebar">
@@ -119,7 +15,7 @@
       </div>
       <h2>Menu</h2>
       <a href="/">Home</a>
-      <a href="/fans" >Fan Curves</a>
+      <a href="/fans" >Fans & Temperatures</a>
       <a href="/rgb" class="active">ARGB Lighting</a>
       <a href="/settings">Settings</a>
     </div>

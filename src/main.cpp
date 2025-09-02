@@ -135,6 +135,11 @@ void InitializeFanCurves() {
             m_SensorSettings[fan_id].fan_speed_curve.push_back({36.0f, MapFanPercentToPwm(55)});
             m_SensorSettings[fan_id].fan_speed_curve.push_back({39.0f, MapFanPercentToPwm(75)});
             m_SensorSettings[fan_id].fan_speed_curve.push_back({41.0f, MapFanPercentToPwm(100)});
+            m_SensorSettings[fan_id].mode = 0;
+            m_SensorSettings[fan_id].pid_kp = 2;
+            m_SensorSettings[fan_id].pid_ki = 5;
+            m_SensorSettings[fan_id].pid_kd = 1;
+            
 
             fan_doc["sensor"] = m_SensorSettings[fan_id].sensor_name;
             fan_doc["curves"] = fan_doc.to<JsonArray>();
@@ -363,11 +368,12 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
         for (int i = 0; i < ACTIVE_FANS; ++i) {            
             int fan_id = a_FanIds[i];
 
-            if (m_SensorSettings[fan_id].mode == 0) { // Only run if in curve mode
+            // Main place where we read RPMs, needs refactoring to separate place though
+            a_CurrentFanSpeedsRpm[i] = ReadFanRpm(i); // Use index 'i' for ReadFanRpm
+
+            if (m_SensorSettings[fan_id].mode == 1) { // Only run if in curve mode
                 continue; // Skip to next fan
             }
-
-            a_CurrentFanSpeedsRpm[i] = ReadFanRpm(i); // Use index 'i' for ReadFanRpm
 
             const auto& settings = m_SensorSettings[fan_id];
             const double temp = (settings.sensor_name == "TEMP_1") ? t1 : t2;
@@ -432,9 +438,10 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
 
 void ProcessPIDControllerTask(void *pvParameters)
 {
-    std::map<int, PID> pidControllers;
+    std::map<int, PID*> pidControllers;
+    std::map<int, double*> pidSetpoints;
 
-    for (int i = 0; i < ACTIVE_FANS; ++i)
+    for (int i = 0; i < ACTIVE_FANS; i++)
     {
         int fan_id = a_FanIds[i];
         if (m_SensorSettings[fan_id].mode == 1)
@@ -443,22 +450,46 @@ void ProcessPIDControllerTask(void *pvParameters)
             double *input = (settings.sensor_name == "TEMP_1") ? &temperature1 : &temperature2;
             m_PidOutputs[fan_id] = 0;
             double *output = &m_PidOutputs[fan_id];
-            double *setpoint = new double;
-            *setpoint = settings.pid_setpoint;
+            
+            pidSetpoints[fan_id] = new double;
+            *pidSetpoints[fan_id] = settings.pid_setpoint;
 
-            pidControllers.emplace(fan_id, PID(input, output, setpoint, settings.pid_kp, settings.pid_ki, settings.pid_kd, DIRECT));
-            pidControllers.at(fan_id).SetMode(AUTOMATIC);
-            pidControllers.at(fan_id).SetOutputLimits(0, 255);
+            pidControllers[fan_id] = new PID(input, output, pidSetpoints[fan_id], settings.pid_kp, settings.pid_ki, settings.pid_kd, REVERSE);
+            pidControllers[fan_id]->SetMode(AUTOMATIC);
+            pidControllers[fan_id]->SetOutputLimits(0, 255);
         }
     }
 
+    // Task-specific destructor
+    auto cleanup = [&]() {
+        for (auto &pair : pidControllers) {
+            delete pair.second; // Free PID object
+        }
+        pidControllers.clear();
+
+        for (auto &pair : pidSetpoints) {
+            delete pair.second; // Free setpoint value
+        }
+        pidSetpoints.clear();
+    };
+
+
     while (true)
     {
+        // Check if the task has been requested to terminate
+        if (eTaskGetState(gProcessPIDControllerTaskHandle) == eDeleted) {
+            cleanup();
+            vTaskDelete(NULL); // Delete self
+        }
+
         for (auto &pair : pidControllers)
         {
             int fan_id = pair.first;
-            PID &controller = pair.second;
-            controller.Compute();
+            PID *controller = pair.second;
+            controller->Compute();
+            if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
+                Serial.printf("Fan %d setting speed: %d\n", fan_id, (int)m_PidOutputs[fan_id]);
+            }
             ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, (int)m_PidOutputs[fan_id]);
         }
         vTaskDelay(pdMS_TO_TICKS(250));
@@ -502,8 +533,8 @@ void DisplayDataTask(void *pvParameters) {
                     }
 
                     oledDisplay.printf(" ### TEMPERATURE ###\n\n");
-                    oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || t1 < 32 && systemSettings.units == "F") ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
-                    oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || t2 < 32 && systemSettings.units == "F") ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
+                    oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || (t1 < 32 && systemSettings.units == "F") || t1 == NAN) ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
+                    oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || (t2 < 32 && systemSettings.units == "F") || t2 == NAN) ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
                     oledDisplay.setCursor(50, 56);
                     oledDisplay.printf(".o..");
                 }
@@ -660,6 +691,7 @@ void InitializeHttpServer() {
     webServer.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) { StreamFile("/settings.html", "text/html", false, request); });
     webServer.on("/rgb", HTTP_GET, [](AsyncWebServerRequest *request) { StreamFile("/rgb.html", "text/html", false, request); });
     webServer.on("/all-jquery-deps.min.js", [](AsyncWebServerRequest *request) { StreamFile("/all-jquery-deps.min.js", "text/javascript", true, request); });
+    webServer.on("/styles.css", [](AsyncWebServerRequest *request) { StreamFile("/styles.css", "text/javascript", true, request); });
     webServer.on("/logo.png", [](AsyncWebServerRequest *request) { StreamFile("/logo.png", "text/image", true, request); });
 
 
@@ -783,7 +815,7 @@ void InitializeHttpServer() {
         });
     });
 
-    // API: Get Fan Curves
+    // API: Get Fans & Temperatures
     webServer.on("/get-curves", HTTP_GET, [](AsyncWebServerRequest *request) {
         JsonDocument doc;
         for (const auto& [key, value] : m_SensorSettings) {
@@ -811,7 +843,7 @@ void InitializeHttpServer() {
         request->send(200, "application/json", buffer);
     });
 
-    // API: Save Fan Curves
+    // API: Save Fans & Temperatures
     webServer.on("/save-curves", HTTP_POST, [](AsyncWebServerRequest *request) {
         int params = request->params();
         for (int i = 0; i < params; i++) {

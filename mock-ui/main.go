@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting server...")
+	fmt.Println("Starting server on port 8081...")
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
 		http.ServeFile(w, r, "../data/index.html")
@@ -38,6 +38,10 @@ func main() {
 	http.HandleFunc("/all-jquery-deps.min.js", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
 		http.ServeFile(w, r, "../data/all-jquery-deps.min.js")
+	})
+	http.HandleFunc("/styles.css", func(w http.ResponseWriter, r *http.Request) {
+		noCacheHeaders(w)
+		http.ServeFile(w, r, "../data/styles.css")
 	})
 	http.HandleFunc("/logo.png", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
@@ -83,10 +87,10 @@ func main() {
 
 	http.HandleFunc("/get-curves", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
-		fmt.Fprintf(w, `{"FAN_0": {"mode": "pid", "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
-			"FAN_1": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
-			"FAN_2": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
-			"FAN_3": {"units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}}`)
+		fmt.Fprintf(w, `{"FAN_0": {"mode": 1, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_1": {"mode": 0, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_2": {"mode": 1, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_3": {"mode": 0, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}}`)
 	})
 
 	http.HandleFunc("/get-rgb", func(w http.ResponseWriter, r *http.Request) {
