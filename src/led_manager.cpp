@@ -12,20 +12,10 @@ void SwapLedChannel(LedChannel channel, int led_strip_index) {
     }
     uint8_t int_pin = (led_strip_index == 0) ? PIN_LED_EXT_CTRL_1 : PIN_LED_EXT_CTRL_2;
     
-#ifdef THREE_STATE_BUFFER_VERSION
-    uint8_t tsb_pin = (led_strip_index == 0) ? PIN_LED_TSB_CTRL_1 : PIN_LED_TSB_CTRL_2;
-#endif
-
     if (channel == LedChannel::Internal) {
         digitalWrite(int_pin, LOW);
-#ifdef THREE_STATE_BUFFER_VERSION
-        digitalWrite(tsb_pin, HIGH);
-#endif
     } else { 
         digitalWrite(int_pin, HIGH);
-#ifdef THREE_STATE_BUFFER_VERSION
-        digitalWrite(tsb_pin, LOW);
-#endif
     }
 }
 

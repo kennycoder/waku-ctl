@@ -182,10 +182,11 @@ void InitializeFanCurves() {
     // Set initial fan speeds based on current temps
     double t1 = ReadTemperature(0);
     double t2 = ReadTemperature(1);
+    double t3 = ReadTemperature(2);
 
     for (int i = 0; i < ACTIVE_FANS; i++) {
         int fan_id = a_FanIds[i];
-        const double temp = (m_SensorSettings[fan_id].sensor_name == "TEMP_1") ? t1 : t2;
+        const double temp = (m_SensorSettings[fan_id].sensor_name == "TEMP_1") ? t1 : (m_SensorSettings[fan_id].sensor_name == "TEMP_2") ? t2 : t3;
         const int target_speed = (temp > 0) ? CalculateFanSpeed(fan_id, temp) : MapFanPercentToPwm(25);
 
         m_TargetFanRpm[fan_id].current_rpm = target_speed;
@@ -263,6 +264,7 @@ void loop() {
 
         temperature1 = ReadTemperature(0);
         temperature2 = ReadTemperature(1);
+        temperature3 = ReadTemperature(2);
     }
 
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
@@ -306,11 +308,13 @@ void MonitorStatesTask(void *pvParameters) {
         bool rpm_alarm_active = false;
         const double t1 = temperature1;
         const double t2 = temperature2;
+        const double t3 = temperature3;
 
         for (int i = 0; i < ACTIVE_FANS; ++i) {
             int fan_id = a_FanIds[i];
             const auto& settings = m_SensorSettings[fan_id];
-            const double temp = (settings.sensor_name == "TEMP_1") ? t1 : t2;
+
+            const double temp = (settings.sensor_name == "TEMP_1") ? t1 : (settings.sensor_name == "TEMP_2") ? t2 : t3;
             const unsigned long current_rpm = a_CurrentFanSpeedsRpm[i];
 
             // Temperature Alarm
@@ -360,9 +364,10 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
 
         const double t1 = temperature1;
         const double t2 = temperature2;
+        const double t3 = temperature3;
 
         if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-            Serial.printf("T1: %.2f C; T2: %.2f C\n", t1, t2);
+            Serial.printf("T1: %.2f C; T2: %.2f C; T3: %.2f C\n", t1, t2, t3);
         }
 
         for (int i = 0; i < ACTIVE_FANS; ++i) {            
@@ -376,7 +381,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
             }
 
             const auto& settings = m_SensorSettings[fan_id];
-            const double temp = (settings.sensor_name == "TEMP_1") ? t1 : t2;
+            const double temp = (settings.sensor_name == "TEMP_1") ? t1 : (settings.sensor_name == "TEMP_2") ? t2 : t3;
 
             if (temp <= 0) {
                 if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) Serial.printf("Temp sensor N/A for FAN_%d. Skipping.\n", fan_id);
@@ -447,7 +452,7 @@ void ProcessPIDControllerTask(void *pvParameters)
         if (m_SensorSettings[fan_id].mode == 1)
         {
             const auto &settings = m_SensorSettings[fan_id];
-            double *input = (settings.sensor_name == "TEMP_1") ? &temperature1 : &temperature2;
+            double *input = (settings.sensor_name == "TEMP_1") ? &temperature1 : (settings.sensor_name == "TEMP_2") ? &temperature2 : &temperature3;
             m_PidOutputs[fan_id] = 0;
             double *output = &m_PidOutputs[fan_id];
             
@@ -526,15 +531,18 @@ void DisplayDataTask(void *pvParameters) {
                 {
                     double t1 = temperature1;
                     double t2 = temperature2;
+                    double t3 = temperature3;
 
                     if (systemSettings.units == "F") {
                         if (t1 > -90.0) t1 = (t1 * 1.8) + 32;
                         if (t2 > -90.0) t2 = (t2 * 1.8) + 32;
+                        if (t3 > -90.0) t3 = (t3 * 1.8) + 32;
                     }
 
                     oledDisplay.printf(" ### TEMPERATURE ###\n\n");
                     oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || (t1 < 32 && systemSettings.units == "F") || t1 == NAN) ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
                     oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || (t2 < 32 && systemSettings.units == "F") || t2 == NAN) ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
+                    // oledDisplay.printf("TEMP3: %s\n", ((t3 < 0 && systemSettings.units == "C") || (t3 < 32 && systemSettings.units == "F") || t3 == NAN) ? "N/A" : (String(t3, 1) + systemSettings.units).c_str());
                     oledDisplay.setCursor(50, 56);
                     oledDisplay.printf(".o..");
                 }
@@ -599,10 +607,12 @@ void SendUsbTelemetry() {
 std::string PrepareTelemetryPayload(const std::string& event) {
     double t1 = temperature1;
     double t2 = temperature2;
+    double t3 = temperature3;
 
     if (systemSettings.units == "F") {
         if (t1 > -90.0) t1 = (t1 * 1.8) + 32;
         if (t2 > -90.0) t2 = (t2 * 1.8) + 32;
+        if (t3 > -90.0) t3 = (t3 * 1.8) + 32;
     }
 
     JsonDocument payload;
@@ -613,6 +623,7 @@ std::string PrepareTelemetryPayload(const std::string& event) {
     
     data["temperature1"] = (t1 > -90.0) ? String(t1, 1).toFloat() : 0.0f;
     data["temperature2"] = (t2 > -90.0) ? String(t2, 1).toFloat() : 0.0f;
+    data["temperature3"] = (t3 > -90.0) ? String(t3, 1).toFloat() : 0.0f;
 
     for (int i = 0; i < ACTIVE_FANS; ++i) {
         std::string fkey = "FAN_" + std::to_string(a_FanIds[i]);

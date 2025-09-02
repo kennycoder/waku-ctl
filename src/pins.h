@@ -22,14 +22,6 @@ constexpr uint8_t PIN_LED_HEADER_2 = 48; // LED header #2 Data
 constexpr uint8_t PIN_LED_EXT_CTRL_1 = 36; // LED header #1 External Control
 constexpr uint8_t PIN_LED_EXT_CTRL_2 = 35; // LED header #2 External Control
 
-#ifdef THREE_STATE_BUFFER_VERSION
-constexpr uint8_t PIN_LED_TSB_CTRL_1 = 38; // LED header #1 TSB Control
-constexpr uint8_t PIN_LED_TSB_CTRL_2 = 37; // LED header #2 TSB Control
-#endif
-
-// --- Thermistor Pins ---
-// Replaced by ADS1115
-
 // --- Fan Pins ---
 extern std::map<int, FanPinPair> PIN_FAN_MAP;
 

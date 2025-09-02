@@ -67,13 +67,6 @@ void InitializeOutputs() {
     pinMode(PIN_LED_EXT_CTRL_2, OUTPUT);
     digitalWrite(PIN_LED_EXT_CTRL_2, LOW);
 
-#ifdef THREE_STATE_BUFFER_VERSION
-    pinMode(PIN_LED_TSB_CTRL_1, OUTPUT);
-    digitalWrite(PIN_LED_TSB_CTRL_1, HIGH);
-    pinMode(PIN_LED_TSB_CTRL_2, OUTPUT);
-    digitalWrite(PIN_LED_TSB_CTRL_2, HIGH);
-#endif
-
     Serial.println("Outputs configured.");
 }
 
