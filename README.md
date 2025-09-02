@@ -95,7 +95,8 @@ The hardware is based on an ESP32-S3 N16R8 development board or a board with a s
 
 [<img src="media/ui-1.png" width="49%">](media/ui-1.png)
 [<img src="media/ui-2.png" width="49%">](media/ui-2.png)
-
+[<img src="media/ui-3.png" width="49%">](media/ui-2.png)
+[<img src="media/ui-4.png" width="49%">](media/ui-2.png)
 ---
 
 _This project is dedicated to my dad, Alexander Danylchyk who taught me a lot and inspired me to pursue an engineering carrer. You are dearly missed._
