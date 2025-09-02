@@ -14,20 +14,6 @@ If you find waku-ctl useful, please consider supporting its development through 
 
 ## Features
 
-1. 
-
-## Structure
-
-*   `/pcb`: Contains the PCB design files from Altium.
-*   `/case`: Contains the STL files for the 3D printable case.
-*   `/src`: Contains the source code for the ESP32 firmware.
-*   `/data`: Contains the web interface files.
-*   `/usb-cdc-daemon`: Contains a small system tray daemon that reads data via USB and submits it to HWiNFO64.
-
-The firmware is developed using Visual Studio Code with the PlatformIO extension.
-
-## Features
-
 *   **Web Interface:** A user-friendly web interface for configuration and monitoring.
 *   **Fan Control:**
     *   Control up to 4 fans/pumps.
@@ -53,6 +39,16 @@ The firmware is developed using Visual Studio Code with the PlatformIO extension
 *   **Hardware:**
     *   Open-source PCB and 3D printable case design.
     *   Based on the powerful ESP32-S3 microcontroller.
+
+## Structure
+
+*   `/pcb`: Contains the PCB design files from Altium.
+*   `/case`: Contains the STL files for the 3D printable case.
+*   `/src`: Contains the source code for the ESP32 firmware.
+*   `/data`: Contains the web interface files.
+*   `/usb-cdc-daemon`: Contains a small system tray daemon that reads data via USB and submits it to HWiNFO64.
+
+The firmware is developed using Visual Studio Code with the PlatformIO extension.
 
 ## Building the Firmware
 
