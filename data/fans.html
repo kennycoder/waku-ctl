@@ -253,13 +253,18 @@
             <div class="pid-controls form-grid" id="pid-controls-${key}" style="display: grid; gap: 15px 10px;">
               <label for="pid_target-${key}">Target Temperature (°${units}):</label>
               <input type="number" id="pid_setpoint-${key}" value="${pid_setpoint || 30}">
-              <label for="pid_p-${key}" title="Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0">Reaction Speed:</label>
+              <label for="pid_p-${key}" title="Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0">Reaction Speed¹:</label>
               <input type="number" id="pid_kp-${key}" step="0.1" value="${pid_kp || 1.0}" min="0.1" max="10.0">
-              <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0">Correction Strength:</label>
+              <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0">Correction Strength²:</label>
               <input type="number" id="pid_ki-${key}" step="0.1" value="${pid_ki || 0.1}" min="0.0" max="10.0">
-              <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0">Stability:</label>
-              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0">
+              <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0">Stability³:</label>
+              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0">              
             </div>
+            <span style="font-size: 0.8em; opacity: 70%; grid-column: 1 / -1;"">
+              ¹ Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0<br/>
+              ² Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0"<br/>
+              ³ Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0<br/>
+            </span>            
           `);
           $('#tab-pid-' + key).append(pidControlsContainer);
 
@@ -438,7 +443,7 @@
             activate: function(event, ui) {
               fan_data[key]['mode'] = ui.newTab.index();
             }
-          });
+          }).css({ "min-height": "440px" });
         }
       
         function calculateContainment(data, index, svg, scaleX, scaleY) {
