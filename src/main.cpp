@@ -539,10 +539,13 @@ void DisplayDataTask(void *pvParameters) {
                         if (t3 > -90.0) t3 = (t3 * 1.8) + 32;
                     }
 
+                    Serial.printf("TEMP DEBUG 1 - %.2f\n", t1);
+                    Serial.printf("TEMP DEBUG 2 - %.2f\n", t2);
+
                     oledDisplay.printf(" ### TEMPERATURE ###\n\n");
-                    oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || (t1 < 32 && systemSettings.units == "F") || t1 == NAN) ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
-                    oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || (t2 < 32 && systemSettings.units == "F") || t2 == NAN) ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
-                    // oledDisplay.printf("TEMP3: %s\n", ((t3 < 0 && systemSettings.units == "C") || (t3 < 32 && systemSettings.units == "F") || t3 == NAN) ? "N/A" : (String(t3, 1) + systemSettings.units).c_str());
+                    oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || (t1 < 32 && systemSettings.units == "F") || isnan(t1)) ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
+                    oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || (t2 < 32 && systemSettings.units == "F") || isnan(t2)) ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
+                    // oledDisplay.printf("TEMP3: %s\n", ((t3 < 0 && systemSettings.units == "C") || (t3 < 32 && systemSettings.units == "F") || isnan(t3)) ? "N/A" : (String(t3, 1) + systemSettings.units).c_str());
                     oledDisplay.setCursor(50, 56);
                     oledDisplay.printf(".o..");
                 }
