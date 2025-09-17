@@ -31,3 +31,5 @@ Units used: mm
 "RST1","B3FS-1000P","BottomLayer","FP-B3FS-1000P-MFG","25.5000","64.5000","180","SWITCH TACTILE SPST-NO 0.05A 24V"
 "R_T2","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","7.1270","56.1274","90","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
 "R_T1","RC1206FR-0710KL","BottomLayer","RESC3116X65X40ML10T20","7.1274","65.1274","270","Chip Resistor, 10 KOhm, +/- 1%, 0.25 W, -55 to 155 degC, 1206 (3216 Metric), RoHS, Tape and Reel"
+"R_330","RC1206JR-13330RL","BottomLayer","RESC3116X65X40NL10T20","32.1000","20.5500","90",""
+
