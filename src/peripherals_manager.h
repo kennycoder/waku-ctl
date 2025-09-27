@@ -6,6 +6,7 @@
 unsigned long ReadFanRpm(int fan_index);
 int CalculateFanSpeed(int fan_index, float temperature);
 
+void GenerateTachSignal();
 void Fan0TachIsr();
 void Fan1TachIsr();
 void Fan2TachIsr();

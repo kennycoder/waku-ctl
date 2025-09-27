@@ -29,13 +29,15 @@ constexpr double ADC_VOLTAGE = 3.3;
 
 // --- Fan Control ---
 constexpr int FAN_DEBOUNCE_MS = 0; // Milliseconds
+constexpr int FAN_DEBOUNCE_MS_PUMP = 10; // Milliseconds
 constexpr int FAN_STUCK_THRESHOLD_MD = 500; // Milliseconds
 constexpr int PWM_RESOLUTION_BITS = 8;
-constexpr int PWM_SIGNAL_FREQUENCY_HZ = 20000; // Hz
+constexpr int PWM_SIGNAL_FREQUENCY_HZ = 25000; // Hz
+constexpr int TACH_PWM_CHANNEL = 15;
 
 // --- LED Control ---
 constexpr int ACTIVE_LED_STRIPS = 2;
-constexpr int MAX_LEDS_PER_STRIP = 64;
+constexpr int MAX_LEDS_PER_STRIP = 96;
 
 // --- Hardware Counts ---
 constexpr int ACTIVE_THERMISTORS = 2;

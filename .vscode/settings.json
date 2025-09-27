@@ -1,5 +1,6 @@
 {
     "files.associations": {
         "map": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "usb-cdc-daemon/cpp-scanner"
 }

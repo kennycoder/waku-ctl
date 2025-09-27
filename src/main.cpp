@@ -7,6 +7,12 @@
 #include "led_manager.h"
 #include <PID_v1.h>
 
+enum {
+  TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP = 1u << 5,
+  TUSB_DESC_CONFIG_ATT_SELF_POWERED  = 1u << 6,
+};
+
+
 Task *gSendTelemetryTask = nullptr;
 TaskHandle_t gProcessPIDControllerTaskHandle = NULL;
 Scheduler taskScheduler;
@@ -33,6 +39,7 @@ void MonitorStatesTask(void *pvParameters);
 void ProcessTemperatureCurvesTask(void *pvParameters);
 void ProcessPIDControllerTask(void *pvParameters);
 void PlayLedsTask(void *pvParameters);
+void GenerateTachSignalTask(void *pvParameters);
 void DisplayDataTask(void *pvParameters);
 void NativeUsbTelemetryTask(void *pvParameters);
 void PlayAlarmsTask(void *pvParameters);
@@ -102,11 +109,12 @@ void InitializeTasks() {
 
     xTaskCreate(MonitorStatesTask, "MonitorStates", 4096, NULL, 6, NULL);
     xTaskCreate(ProcessTemperatureCurvesTask, "ReadTemps", 4096, NULL, 5, NULL);
+    xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
     xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 4, NULL);
     xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
-    xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
+    //xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
+    xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 2048, NULL, 1, NULL);
     xTaskCreate(PlayAlarmsTask, "PlayAlarms", 2048, NULL, tskIDLE_PRIORITY, NULL);
-    xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
 
     InitializeMqttTelemetryTask(taskScheduler, gSendTelemetryTask);
     Serial.println("Tasks initialized.");
@@ -203,6 +211,7 @@ void setup() {
     USB.VID(0x303A);
     USB.productName("WaKu Controller");
     USB.manufacturerName("kenny's Labs");
+    USB.usbAttributes(TUSB_DESC_CONFIG_ATT_SELF_POWERED | TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP);
     USBTelemetryPort.begin();
     USB.begin();
 
@@ -425,11 +434,17 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                     Serial.printf("FAN_%d: Reached target %d\n", fan_id, target.target_rpm);
                     target.is_adjusting = false;
                 }
-                ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.current_rpm);
+                if (m_CurrentFanPwmValues[fan_id] != target.current_rpm) {
+                    ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.current_rpm);
+                    m_CurrentFanPwmValues[fan_id] = target.current_rpm;
+                }
 
             } else if (!target.is_adjusting) {
                 // Ensure it stays at target if not adjusting
-                ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.target_rpm);
+                if (m_CurrentFanPwmValues[fan_id] != target.target_rpm) {
+                    ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.target_rpm);
+                    m_CurrentFanPwmValues[fan_id] = target.target_rpm;
+                }
             }
 
             if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
@@ -461,7 +476,7 @@ void ProcessPIDControllerTask(void *pvParameters)
 
             pidControllers[fan_id] = new PID(input, output, pidSetpoints[fan_id], settings.pid_kp, settings.pid_ki, settings.pid_kd, REVERSE);
             pidControllers[fan_id]->SetMode(AUTOMATIC);
-            pidControllers[fan_id]->SetOutputLimits(0, 255);
+            pidControllers[fan_id]->SetOutputLimits(77, 255); // ~30% duty cycle
         }
     }
 
@@ -492,10 +507,14 @@ void ProcessPIDControllerTask(void *pvParameters)
             int fan_id = pair.first;
             PID *controller = pair.second;
             controller->Compute();
-            if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-                Serial.printf("Fan %d setting speed: %d\n", fan_id, (int)m_PidOutputs[fan_id]);
+            int pwm_val = (int)m_PidOutputs[fan_id];
+            if (m_CurrentPidPwmValues[fan_id] != pwm_val) {
+                if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
+                    Serial.printf("Fan %d setting speed: %d\n", fan_id, (int)m_PidOutputs[fan_id]);
+                }
+                ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, pwm_val);
+                m_CurrentPidPwmValues[fan_id] = pwm_val;
             }
-            ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, (int)m_PidOutputs[fan_id]);
         }
         vTaskDelay(pdMS_TO_TICKS(250));
     }
@@ -508,6 +527,22 @@ void PlayLedsTask(void *pvParameters) {
         }
         vTaskDelay(pdMS_TO_TICKS(66)); // ~15 FPS target
     }
+}
+
+void GenerateTachSignalTask(void *pvParameters) {
+    while(true) {
+        unsigned long rpm = a_CurrentFanSpeedsRpm[0];
+        // Tach signal is 2 pulses per revolution.
+        // Frequency (Hz) = RPM / 60 * 2
+        float frequency = (float)rpm / 30.0;
+        frequency = frequency < 0 ? 0 : frequency;
+        if (rpm != lastTach) {
+            Serial.printf("Generating TACH signal at %.2f Hz for RPM %lu\n", frequency, rpm);
+            ledcWriteTone(PIN_TACH, frequency);
+            lastTach = rpm;
+        } 
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }        
 }
 
 void DisplayDataTask(void *pvParameters) {
@@ -539,13 +574,10 @@ void DisplayDataTask(void *pvParameters) {
                         if (t3 > -90.0) t3 = (t3 * 1.8) + 32;
                     }
 
-                    Serial.printf("TEMP DEBUG 1 - %.2f\n", t1);
-                    Serial.printf("TEMP DEBUG 2 - %.2f\n", t2);
-
                     oledDisplay.printf(" ### TEMPERATURE ###\n\n");
                     oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || (t1 < 32 && systemSettings.units == "F") || isnan(t1)) ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
                     oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || (t2 < 32 && systemSettings.units == "F") || isnan(t2)) ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
-                    // oledDisplay.printf("TEMP3: %s\n", ((t3 < 0 && systemSettings.units == "C") || (t3 < 32 && systemSettings.units == "F") || isnan(t3)) ? "N/A" : (String(t3, 1) + systemSettings.units).c_str());
+                    oledDisplay.printf("TEMP3: %s\n", ((t3 < 0 && systemSettings.units == "C") || (t3 < 32 && systemSettings.units == "F") || isnan(t3)) ? "N/A" : (String(t3, 1) + systemSettings.units).c_str());
                     oledDisplay.setCursor(50, 56);
                     oledDisplay.printf(".o..");
                 }

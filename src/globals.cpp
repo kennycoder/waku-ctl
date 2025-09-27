@@ -52,6 +52,8 @@ std::map<int, FanRpmTarget> m_TargetFanRpm = {
 };
 
 std::map<int, double> m_PidOutputs;
+std::map<int, int> m_CurrentFanPwmValues;
+std::map<int, int> m_CurrentPidPwmValues;
 
 std::map<int, FanPinPair> PIN_FAN_MAP = {
     {0, {14, 13}},
@@ -59,6 +61,8 @@ std::map<int, FanPinPair> PIN_FAN_MAP = {
     {2, {10, 9}},
     {3, {7, 6}}
 };
+
+unsigned long lastTach = 0;
 
 // Fan ISR Timestamps
 volatile unsigned long fan0_TS1 = 0, fan0_TS2 = 0;

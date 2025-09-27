@@ -1,0 +1,9 @@
+[submodule "usb-cdc-daemon/libs/json"]
+	path = usb-cdc-daemon/libs/json
+	url = https://github.com/nlohmann/json.git
+[submodule "usb-cdc-daemon/libs/serial"]
+	path = usb-cdc-daemon/libs/serial
+	url = https://github.com/wjwwood/serial.git
+[submodule "usb-cdc-daemon/libs/tray"]
+	path = usb-cdc-daemon/libs/tray
+	url = https://github.com/zserge/tray.git

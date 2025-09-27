@@ -59,12 +59,12 @@
           `);
 
           // Temperature 2
-          // $('#data-container').append(`
-          //   <div class="data-item">
-          //     <span class="data-label">Temperature 3:</span>
-          //     <div class="data-value">${data.data.temperature3 > 0 ? (Math.round((data.data.temperature3 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-          //   </div>
-          // `);
+          $('#data-container').append(`
+            <div class="data-item">
+              <span class="data-label">Temperature 3:</span>
+              <div class="data-value">${data.data.temperature3 > 0 ? (Math.round((data.data.temperature3 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
+            </div>
+          `);
 
           // Fan Pump Speed
           $('#data-container').append(`

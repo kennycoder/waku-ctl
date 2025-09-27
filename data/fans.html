@@ -37,7 +37,7 @@
       
       <script>
         var fan_data = [];
-        var available_sensors = ['TEMP_1', 'TEMP_2'/*, 'TEMP_3'*/];
+        var available_sensors = ['TEMP_1', 'TEMP_2', 'TEMP_3'];
         var units = "C";
 
         $(document).ready(function() {
@@ -229,7 +229,7 @@
           temp_select.appendTo(controlsContainer);
 
           const halt_select_label = $(`<label for="halt_on-${key}">Halt PC on:</label>`);
-          const halt_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `halt-${key}`);
+          const halt_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `halt_on-${key}`);
           halt_select.append($('<option>', { value: 0, text : 'No halt', selected: halt_on == 0 }));
           halt_select.append($('<option>', { value: 1, text : 'Halt on fan speed alarm', selected: halt_on == 1 }));
           halt_select.append($('<option>', { value: 2, text : 'Halt on temperature alarm', selected: halt_on == 2 }));

@@ -1,6 +1,6 @@
 #include "peripherals_manager.h"
 
-void IRAM_ATTR Fan0TachIsr() { unsigned long m = millis(); if ((m - fan0_TS2) > FAN_DEBOUNCE_MS) { fan0_TS1 = fan0_TS2; fan0_TS2 = m; } }
+void IRAM_ATTR Fan0TachIsr() { unsigned long m = millis(); if ((m - fan0_TS2) > FAN_DEBOUNCE_MS_PUMP) { fan0_TS1 = fan0_TS2; fan0_TS2 = m; } }
 void IRAM_ATTR Fan1TachIsr() { unsigned long m = millis(); if ((m - fan1_TS2) > FAN_DEBOUNCE_MS) { fan1_TS1 = fan1_TS2; fan1_TS2 = m; } }
 void IRAM_ATTR Fan2TachIsr() { unsigned long m = millis(); if ((m - fan2_TS2) > FAN_DEBOUNCE_MS) { fan2_TS1 = fan2_TS2; fan2_TS2 = m; } }
 void IRAM_ATTR Fan3TachIsr() { unsigned long m = millis(); if ((m - fan3_TS2) > FAN_DEBOUNCE_MS) { fan3_TS1 = fan3_TS2; fan3_TS2 = m; } }
@@ -61,6 +61,9 @@ void InitializeOutputs() {
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_PWR, OUTPUT);
     digitalWrite(PIN_PWR, LOW);
+
+    // Manually set the channel to 7 so it doesn't interfere with other PWM channels
+    ledcAttachChannel(PIN_TACH, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS, 7);
 
     pinMode(PIN_LED_EXT_CTRL_1, OUTPUT);
     digitalWrite(PIN_LED_EXT_CTRL_1, LOW);
@@ -130,6 +133,11 @@ void InitializeLeds() {
             m_LedSettings[i].start_color = led_doc["start_color"].as<uint32_t>();
             m_LedSettings[i].end_color = led_doc["end_color"].as<uint32_t>();
             m_LedSettings[i].num_leds = led_doc["num_leds"].as<uint8_t>();
+
+            if (m_LedSettings[i].num_leds > MAX_LEDS_PER_STRIP) {
+                Serial.printf("Capping LED strip %d length from %d to %d\n", i, m_LedSettings[i].num_leds, MAX_LEDS_PER_STRIP);
+                m_LedSettings[i].num_leds = MAX_LEDS_PER_STRIP;
+            }
         }
 
         Serial.printf("Adding LED %d: %d LEDs, Mode %d\n", i, m_LedSettings[i].num_leds, m_LedSettings[i].mode);

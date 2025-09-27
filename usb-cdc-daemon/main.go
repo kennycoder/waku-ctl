@@ -120,7 +120,7 @@ OUTER:
 		}
 
 		// Open the serial port
-		port, err = serial.Open(portName, &serial.Mode{BaudRate: 115200}) // Assuming 115200 baud rate
+		port, err = serial.Open(portName, &serial.Mode{BaudRate: 9600, DataBits: 8, Parity: serial.NoParity, StopBits: 1}) // Assuming 115200 baud rate
 		if err != nil {
 			log.Printf("Error opening serial port %s: %v. Retrying in 5 seconds...", portName, err)
 			systray.SetTooltip("Waku Controller: Not connected")
