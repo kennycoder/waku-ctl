@@ -44,7 +44,20 @@
           <option value="F">Farenheit</option>
         </select>
 
+        <h1>Fan setup</h1>
         <hr style="grid-column: 1 / -1;">
+        <label for="fan_passthrough">Which FAN RPM to passthrough</label>
+        <select id="fan_passthrough" name="fan_passthrough">
+          <option value="0">FAN_PUMP</option>
+          <option value="1">FAN_1</option>
+          <option value="2">FAN_2</option>
+          <option value="3">FAN_3</option>
+          <option value="-1">None</option>
+        </select>
+
+        <h1>MQTT Setup</h1>
+        <hr style="grid-column: 1 / -1;">
+
         <label style="text-align: right;" for="mqtt_enable">Enable sending telemetry via MQTT</label>
         <input type="checkbox" id="mqtt_enable" name="mqtt_enable" value="true" disabled  style="width: min-content;">
         
@@ -143,6 +156,7 @@
               $('#mqtt_topic').val(data.mqtt_topic);
               $('#mqtt_port').val(data.mqtt_port);
               $('#tel_itv').val(data.tel_itv);
+              $('#fan_passthrough').val(data.fan_passthrough);
               toggleMQTTElements();
           }
         });      

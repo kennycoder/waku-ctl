@@ -27,6 +27,8 @@ struct Settings {
   String mqtt_username = "";
   String mqtt_password = "";
   int mqtt_port = 1883;
+
+  int8_t fan_passthrough = 0; 
 };
 
 struct FanSpeedPoint {

@@ -75,7 +75,6 @@ extern unsigned long a_CurrentFanSpeedsRpm[ACTIVE_FANS];
 extern std::map<int, FanRpmTarget> m_TargetFanRpm;
 extern std::map<int, double> m_PidOutputs;
 extern std::map<int, int> m_CurrentFanPwmValues;
-extern std::map<int, int> m_CurrentPidPwmValues;
 
 extern unsigned long lastTach;
 

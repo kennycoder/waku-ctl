@@ -29,7 +29,7 @@ constexpr double ADC_VOLTAGE = 3.3;
 
 // --- Fan Control ---
 constexpr int FAN_DEBOUNCE_MS = 0; // Milliseconds
-constexpr int FAN_DEBOUNCE_MS_PUMP = 10; // Milliseconds
+constexpr int FAN_DEBOUNCE_MS_PUMP = 0; // Milliseconds
 constexpr int FAN_STUCK_THRESHOLD_MD = 500; // Milliseconds
 constexpr int PWM_RESOLUTION_BITS = 8;
 constexpr int PWM_SIGNAL_FREQUENCY_HZ = 25000; // Hz

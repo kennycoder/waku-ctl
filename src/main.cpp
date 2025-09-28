@@ -12,7 +12,6 @@ enum {
   TUSB_DESC_CONFIG_ATT_SELF_POWERED  = 1u << 6,
 };
 
-
 Task *gSendTelemetryTask = nullptr;
 TaskHandle_t gProcessPIDControllerTaskHandle = NULL;
 Scheduler taskScheduler;
@@ -46,7 +45,6 @@ void PlayAlarmsTask(void *pvParameters);
 
 // Telemetry
 std::string PrepareTelemetryPayload(const std::string& event = "default");
-void SendUsbTelemetry();
 
 // HTTP Server
 void HandleHttpNotFound(AsyncWebServerRequest *request);
@@ -83,6 +81,7 @@ void InitializeConfig() {
     systemSettings.mqtt_username = systemPreferences.getString("mqtt_username", "");
     systemSettings.mqtt_password = systemPreferences.getString("mqtt_password", "");
     systemSettings.mqtt_port = systemPreferences.getInt("mqtt_port", MQTT_DEFAULT_PORT);
+    systemSettings.fan_passthrough = systemPreferences.getInt("fan_passthrough", -1);
 
     Serial.println("Settings loaded.");
 }
@@ -101,6 +100,7 @@ void SaveConfig(const Settings& s) {
     systemPreferences.putString("mqtt_username", s.mqtt_username);
     systemPreferences.putString("mqtt_password", s.mqtt_password);
     systemPreferences.putInt("mqtt_port", s.mqtt_port);
+    systemPreferences.putInt("fan_passthrough", s.fan_passthrough);    
     Serial.println("Settings saved.");
 }
 
@@ -112,7 +112,7 @@ void InitializeTasks() {
     xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
     xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 4, NULL);
     xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
-    //xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
+    xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
     xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 2048, NULL, 1, NULL);
     xTaskCreate(PlayAlarmsTask, "PlayAlarms", 2048, NULL, tskIDLE_PRIORITY, NULL);
 
@@ -212,7 +212,7 @@ void setup() {
     USB.productName("WaKu Controller");
     USB.manufacturerName("kenny's Labs");
     USB.usbAttributes(TUSB_DESC_CONFIG_ATT_SELF_POWERED | TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP);
-    USBTelemetryPort.begin();
+    USBTelemetryPort.begin(115200);
     USB.begin();
 
     Serial.begin(115200);
@@ -436,6 +436,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                 }
                 if (m_CurrentFanPwmValues[fan_id] != target.current_rpm) {
                     ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.current_rpm);
+                    Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, target.current_rpm);
                     m_CurrentFanPwmValues[fan_id] = target.current_rpm;
                 }
 
@@ -443,6 +444,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                 // Ensure it stays at target if not adjusting
                 if (m_CurrentFanPwmValues[fan_id] != target.target_rpm) {
                     ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.target_rpm);
+                    Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, target.current_rpm);
                     m_CurrentFanPwmValues[fan_id] = target.target_rpm;
                 }
             }
@@ -508,12 +510,13 @@ void ProcessPIDControllerTask(void *pvParameters)
             PID *controller = pair.second;
             controller->Compute();
             int pwm_val = (int)m_PidOutputs[fan_id];
-            if (m_CurrentPidPwmValues[fan_id] != pwm_val) {
+            if (m_CurrentFanPwmValues[fan_id] != pwm_val) {
                 if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
                     Serial.printf("Fan %d setting speed: %d\n", fan_id, (int)m_PidOutputs[fan_id]);
                 }
                 ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, pwm_val);
-                m_CurrentPidPwmValues[fan_id] = pwm_val;
+                Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, pwm_val);
+                m_CurrentFanPwmValues[fan_id] = pwm_val;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(250));
@@ -531,16 +534,23 @@ void PlayLedsTask(void *pvParameters) {
 
 void GenerateTachSignalTask(void *pvParameters) {
     while(true) {
-        unsigned long rpm = a_CurrentFanSpeedsRpm[0];
-        // Tach signal is 2 pulses per revolution.
-        // Frequency (Hz) = RPM / 60 * 2
-        float frequency = (float)rpm / 30.0;
-        frequency = frequency < 0 ? 0 : frequency;
-        if (rpm != lastTach) {
-            Serial.printf("Generating TACH signal at %.2f Hz for RPM %lu\n", frequency, rpm);
-            ledcWriteTone(PIN_TACH, frequency);
-            lastTach = rpm;
-        } 
+        if (systemSettings.fan_passthrough >= 0 && systemSettings.fan_passthrough < ACTIVE_FANS) {
+            unsigned long rpm = a_CurrentFanSpeedsRpm[systemSettings.fan_passthrough];
+
+            // Tach signal is 2 pulses per revolution.
+            // Frequency (Hz) = RPM / 60 * 2
+
+            float frequency = (float)rpm / 30.0;
+            frequency = frequency < 0 ? 0 : frequency;
+            if (rpm != lastTach) {
+                if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
+                    Serial.printf("Generating TACH signal at %.2f Hz for RPM %lu\n", frequency, rpm);
+                }
+                ledcWriteTone(PIN_TACH, frequency);
+                lastTach = rpm;
+            } 
+        }
+
         vTaskDelay(pdMS_TO_TICKS(250));
     }        
 }
@@ -622,22 +632,19 @@ void NativeUsbTelemetryTask(void *pvParameters) {
     const TickType_t frequency = pdMS_TO_TICKS(1000); // Send every 1 second
 
     while (true) {
+        if (USBTelemetryPort) {
+            std::string payload = PrepareTelemetryPayload("usb_stream");
+            size_t sent_bytes = USBTelemetryPort.println(payload.c_str());
+            if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
+                Serial.printf("USB: Sent %d bytes.\n", sent_bytes);
+            }
+        }
+
         vTaskDelayUntil(&last_wake_time, frequency);
-        SendUsbTelemetry();
     }
 }
 
 // --- MQTT & Telemetry ---
-
-void SendUsbTelemetry() {
-    if (USBTelemetryPort) {
-        std::string payload = PrepareTelemetryPayload("usb_stream");
-        size_t sent_bytes = USBTelemetryPort.println(payload.c_str());
-        if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-            Serial.printf("USB: Sent %d bytes.\n", sent_bytes);
-        }
-    }
-}
 
 std::string PrepareTelemetryPayload(const std::string& event) {
     double t1 = temperature1;
@@ -809,6 +816,7 @@ void InitializeHttpServer() {
         doc["mqtt_username"] = systemSettings.mqtt_username;
         doc["mqtt_password"] = systemSettings.mqtt_password; // Note: Sending password
         doc["mqtt_port"] = systemSettings.mqtt_port;
+        doc["fan_passthrough"] = systemSettings.fan_passthrough;
         String buffer;
         serializeJson(doc, buffer);
         request->send(200, "application/json", buffer);
@@ -834,6 +842,7 @@ void InitializeHttpServer() {
         if (request->hasParam("mqtt_topic", true)) systemSettings.mqtt_topic = request->getParam("mqtt_topic", true)->value();
         if (request->hasParam("mqtt_broker", true)) systemSettings.mqtt_broker = request->getParam("mqtt_broker", true)->value();
         if (request->hasParam("mqtt_port", true)) systemSettings.mqtt_port = request->getParam("mqtt_port", true)->value().toInt();
+        if (request->hasParam("fan_passthrough", true)) systemSettings.fan_passthrough = request->getParam("fan_passthrough", true)->value().toInt();        
 
         SaveConfig(systemSettings);
         request->send(200, "application/json", "{\"status\": \"settings_saved\"}");

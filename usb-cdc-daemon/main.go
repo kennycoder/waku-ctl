@@ -31,6 +31,7 @@ type TelemetryData struct {
 	Data     struct {
 		Temperature1 float64 `json:"temperature1"`
 		Temperature2 float64 `json:"temperature2"`
+		Temperature3 float64 `json:"temperature3"`
 		FAN0         uint    `json:"FAN_0"`
 		FAN1         uint    `json:"FAN_1"`
 		FAN2         uint    `json:"FAN_2"`
@@ -251,6 +252,7 @@ func processTelemetry(jsonStr string) {
 	sensorInfos := []sensorRegistryInfo{
 		{"Temp0", "Temperature sensor 0", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temperature1) }},
 		{"Temp1", "Temperature sensor 1", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temperature2) }},
+		{"Temp2", "Temperature sensor 2", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temperature3) }},
 		{"Fan0", "Fan Pump Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN0) }},
 		{"Fan1", "Fan 1 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN1) }},
 		{"Fan2", "Fan 2 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN2) }},

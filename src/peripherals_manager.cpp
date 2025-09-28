@@ -38,6 +38,8 @@ double ReadTemperature(int channel) {
     
     // printf("Temperature on channel %d: %.2f C (Resistance: %.2f Ohm)\n", channel, celsius, resistance);
 
+    celsius = std::min(std::max(celsius, -40.0), 125.0); // Clamp to -40 to 125 C
+
     return celsius;
 }
 
@@ -62,8 +64,7 @@ void InitializeOutputs() {
     pinMode(PIN_PWR, OUTPUT);
     digitalWrite(PIN_PWR, LOW);
 
-    // Manually set the channel to 7 so it doesn't interfere with other PWM channels
-    ledcAttachChannel(PIN_TACH, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS, 7);
+    ledcAttach(PIN_TACH, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
 
     pinMode(PIN_LED_EXT_CTRL_1, OUTPUT);
     digitalWrite(PIN_LED_EXT_CTRL_1, LOW);
