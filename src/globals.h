@@ -29,7 +29,7 @@
 #include "pins.h"
 
 // --- Global Variables ---
-extern double temperature1, temperature2, temperature3;
+extern double a_currentTemperatures[ACTIVE_THERMISTORS];
 
 // System State
 extern unsigned long gHoldButtonCounter;
@@ -62,13 +62,12 @@ extern const String AP_LOCAL_URL;
 extern Settings systemSettings;
 extern std::map<int, TemperatureSensorSettings> m_SensorSettings;
 extern std::map<int, LedSettings> m_LedSettings;
-
 // LED Data
 extern CRGB a_LedBuffers[ACTIVE_LED_STRIPS][MAX_LEDS_PER_STRIP];
 
 // Thermistor/Fan IDs
 extern int a_ThermistorIds[ACTIVE_THERMISTORS];
-extern int a_FanIds[ACTIVE_FANS];
+extern String a_FanNames[ACTIVE_FANS];
 
 // Fan State
 extern unsigned long a_CurrentFanSpeedsRpm[ACTIVE_FANS];

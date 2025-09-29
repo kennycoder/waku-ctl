@@ -3,7 +3,7 @@
 
 // --- Global Variable Definitions ---
 
-double temperature1 = 0, temperature2 = 0, temperature3 = 0;
+double a_currentTemperatures[ACTIVE_THERMISTORS] = {0.0f, 0.0f, 0.0f};
 
 // System State
 unsigned long gHoldButtonCounter = 0;
@@ -39,8 +39,8 @@ std::map<int, LedSettings> m_LedSettings;
 CRGB a_LedBuffers[ACTIVE_LED_STRIPS][MAX_LEDS_PER_STRIP];
 
 // Thermistor/Fan IDs
-int a_ThermistorIds[ACTIVE_THERMISTORS] = {0, 1};
-int a_FanIds[ACTIVE_FANS] = {0, 1, 2, 3};
+int a_ThermistorIds[ACTIVE_THERMISTORS] = {1, 2, 3};
+String a_FanNames[ACTIVE_FANS] = {"PUMP", "1", "2", "3"};
 
 // Fan State
 unsigned long a_CurrentFanSpeedsRpm[ACTIVE_FANS] = {999, 999, 999, 999};

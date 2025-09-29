@@ -71,33 +71,42 @@
       
       <script>
         var fan_data = [];
-        var available_sensors = ['TEMP_1', 'TEMP_2', 'TEMP_3'];
+        var available_sensors = [];
         var units = "C";
 
         $(document).ready(function() {
           $.ajax({
-            url: '/get-curves',
+            url: '/get-sensors',
             type: 'GET',
             dataType: 'json',
-            success: function(data) {
-              fan_data = data;
-              // update data object with fetched data
-              for (const key in fan_data) {
-                if (fan_data.hasOwnProperty(key)) {
-                  units = fan_data[key]['units'];
-                  fan_data[key]['curves'].forEach((point, index) => {
-                    fan_data[key]['curves'][index].temp = parseInt(point.temp);
-                    fan_data[key]['curves'][index].fan = parseInt(point.fan);
-                  });
+            success: function(sensors) {
+              available_sensors = sensors;
+              
+              $.ajax({
+                url: '/get-curves',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                  fan_data = data;
+                  // update data object with fetched data
+                  for (const key in fan_data) {
+                    if (fan_data.hasOwnProperty(key)) {
+                      units = fan_data[key]['units'];
+                      fan_data[key]['curves'].forEach((point, index) => {
+                        fan_data[key]['curves'][index].temp = parseInt(point.temp);
+                        fan_data[key]['curves'][index].fan = parseInt(point.fan);
+                      });
+                    }
+                  }
+          
+                  for (const key in fan_data) {
+                    createChart(key, fan_data[key]);
+                  }
                 }
-              }
-      
-              for (const key in fan_data) {
-                createChart(key, fan_data[key]);
-              }
+              });
             }
           });
-      
+
           $('#fan-curves').submit(function(event) {
             event.preventDefault(); // Prevent default form submission
       

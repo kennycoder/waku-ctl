@@ -43,34 +43,40 @@
           $('#data-container').empty(); // Clear previous data
 
           // Temperature 1
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Temperature 1:</span>
-              <div class="data-value">${data.data.temperature1 > 0 ? (Math.round((data.data.temperature1 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-            </div>
-          `);
+          if (data.data.temperature1 !== undefined) {
+            $('#data-container').append(`
+              <div class="data-item">
+                <span class="data-label">Temperature 1:</span>
+                <div class="data-value">${data.data.temperature1 > 0 ? (Math.round((data.data.temperature1 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
+              </div>
+            `);
+          }
 
           // Temperature 2
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Temperature 2:</span>
-              <div class="data-value">${data.data.temperature2 > 0 ? (Math.round((data.data.temperature2 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-            </div>
-          `);
+          if (data.data.temperature2 !== undefined) {
+            $('#data-container').append(`
+              <div class="data-item">
+                <span class="data-label">Temperature 2:</span>
+                <div class="data-value">${data.data.temperature2 > 0 ? (Math.round((data.data.temperature2 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
+              </div>
+            `);
+          }
 
-          // Temperature 2
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Temperature 3:</span>
-              <div class="data-value">${data.data.temperature3 > 0 ? (Math.round((data.data.temperature3 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-            </div>
-          `);
+          // Temperature 3
+          if (data.data.temperature3 !== undefined) {
+            $('#data-container').append(`
+              <div class="data-item">
+                <span class="data-label">Temperature 3:</span>
+                <div class="data-value">${data.data.temperature3 > 0 ? (Math.round((data.data.temperature3 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
+              </div>
+            `);          
+          }
 
           // Fan Pump Speed
           $('#data-container').append(`
             <div class="data-item">
               <span class="data-label">Fan Pump Speed:</span>
-              <div class="data-value">${data.data.FAN_0} RPM</div>
+              <div class="data-value">${data.data.FAN_PUMP} RPM</div>
             </div>
           `);
 

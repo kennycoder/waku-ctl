@@ -81,7 +81,7 @@ void InitializeConfig() {
     systemSettings.mqtt_username = systemPreferences.getString("mqtt_username", "");
     systemSettings.mqtt_password = systemPreferences.getString("mqtt_password", "");
     systemSettings.mqtt_port = systemPreferences.getInt("mqtt_port", MQTT_DEFAULT_PORT);
-    systemSettings.fan_passthrough = systemPreferences.getInt("fan_passthrough", -1);
+    systemSettings.fan_passthrough = systemPreferences.getInt("fan_passthrough", 0);
 
     Serial.println("Settings loaded.");
 }
@@ -122,8 +122,7 @@ void InitializeTasks() {
 
 
 void InitializeFanCurves() {
-    for (int i = 0; i < ACTIVE_FANS; i++) {
-        int fan_id = a_FanIds[i];
+    for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
         String fan_key = "FAN_" + String(fan_id);
         String fan_curves = systemPreferences.getString(fan_key.c_str(), "{}");
         JsonDocument fan_doc;
@@ -192,8 +191,7 @@ void InitializeFanCurves() {
     double t2 = ReadTemperature(1);
     double t3 = ReadTemperature(2);
 
-    for (int i = 0; i < ACTIVE_FANS; i++) {
-        int fan_id = a_FanIds[i];
+    for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
         const double temp = (m_SensorSettings[fan_id].sensor_name == "TEMP_1") ? t1 : (m_SensorSettings[fan_id].sensor_name == "TEMP_2") ? t2 : t3;
         const int target_speed = (temp > 0) ? CalculateFanSpeed(fan_id, temp) : MapFanPercentToPwm(25);
 
@@ -271,9 +269,9 @@ void loop() {
         taskScheduler.execute();
         LoopMqttClient();
 
-        temperature1 = ReadTemperature(0);
-        temperature2 = ReadTemperature(1);
-        temperature3 = ReadTemperature(2);
+        for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+            a_currentTemperatures[i] = ReadTemperature(i);
+        }
     }
 
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
@@ -315,16 +313,12 @@ void MonitorStatesTask(void *pvParameters) {
         // --- Monitor Alarms ---
         bool temp_alarm_active = false;
         bool rpm_alarm_active = false;
-        const double t1 = temperature1;
-        const double t2 = temperature2;
-        const double t3 = temperature3;
 
-        for (int i = 0; i < ACTIVE_FANS; ++i) {
-            int fan_id = a_FanIds[i];
+        for (int fan_id = 0; fan_id < ACTIVE_FANS; ++fan_id) {
             const auto& settings = m_SensorSettings[fan_id];
 
-            const double temp = (settings.sensor_name == "TEMP_1") ? t1 : (settings.sensor_name == "TEMP_2") ? t2 : t3;
-            const unsigned long current_rpm = a_CurrentFanSpeedsRpm[i];
+            const double temp = (settings.sensor_name == "TEMP_1") ? a_currentTemperatures[0] : (settings.sensor_name == "TEMP_2") ? a_currentTemperatures[1] : a_currentTemperatures[2];
+            const unsigned long current_rpm = a_CurrentFanSpeedsRpm[fan_id];
 
             // Temperature Alarm
             if (temp > 0 && settings.temperature_alarm_threshold > 0 && temp >= settings.temperature_alarm_threshold) {
@@ -371,26 +365,25 @@ void PlayAlarmsTask(void *pvParameters) {
 void ProcessTemperatureCurvesTask(void *pvParameters) {
     while (true) {
 
-        const double t1 = temperature1;
-        const double t2 = temperature2;
-        const double t3 = temperature3;
-
         if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-            Serial.printf("T1: %.2f C; T2: %.2f C; T3: %.2f C\n", t1, t2, t3);
+            for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+                Serial.printf("T%d: %.2f C; ", i + 1, a_currentTemperatures[i]);
+            }
+            Serial.printf("\n");
         }
 
-        for (int i = 0; i < ACTIVE_FANS; ++i) {            
-            int fan_id = a_FanIds[i];
+        for (int fan_id = 0; fan_id < ACTIVE_FANS; ++fan_id) {
 
             // Main place where we read RPMs, needs refactoring to separate place though
-            a_CurrentFanSpeedsRpm[i] = ReadFanRpm(i); // Use index 'i' for ReadFanRpm
+            a_CurrentFanSpeedsRpm[fan_id] = ReadFanRpm(fan_id); // Use index 'i' for ReadFanRpm
 
             if (m_SensorSettings[fan_id].mode == 1) { // Only run if in curve mode
                 continue; // Skip to next fan
             }
 
             const auto& settings = m_SensorSettings[fan_id];
-            const double temp = (settings.sensor_name == "TEMP_1") ? t1 : (settings.sensor_name == "TEMP_2") ? t2 : t3;
+            const double temp = (settings.sensor_name == "TEMP_1") ? a_currentTemperatures[0] : (settings.sensor_name == "TEMP_2") ? a_currentTemperatures[1] : a_currentTemperatures[2];
+
 
             if (temp <= 0) {
                 if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) Serial.printf("Temp sensor N/A for FAN_%d. Skipping.\n", fan_id);
@@ -436,7 +429,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                 }
                 if (m_CurrentFanPwmValues[fan_id] != target.current_rpm) {
                     ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.current_rpm);
-                    Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, target.current_rpm);
+                    Serial.printf("FAN_%d: Setting PWM to %d (on PIN %d)\n", fan_id, target.current_rpm, PIN_FAN_MAP[fan_id].pwm_pin);
                     m_CurrentFanPwmValues[fan_id] = target.current_rpm;
                 }
 
@@ -444,14 +437,14 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                 // Ensure it stays at target if not adjusting
                 if (m_CurrentFanPwmValues[fan_id] != target.target_rpm) {
                     ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.target_rpm);
-                    Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, target.current_rpm);
+                    Serial.printf("FAN_%d: Setting PWM to %d (on PIN %d)\n", fan_id, target.target_rpm, PIN_FAN_MAP[fan_id].pwm_pin);
                     m_CurrentFanPwmValues[fan_id] = target.target_rpm;
                 }
             }
 
             if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
                 Serial.printf("FAN_%d RPM: %lu (Target PWM: %d, Current PWM: %d)\n",
-                              fan_id, a_CurrentFanSpeedsRpm[i], target.target_rpm, target.current_rpm);
+                              fan_id, a_CurrentFanSpeedsRpm[fan_id], target.target_rpm, target.current_rpm);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(250)); // Read temps/adjust fans twice a second
@@ -463,13 +456,13 @@ void ProcessPIDControllerTask(void *pvParameters)
     std::map<int, PID*> pidControllers;
     std::map<int, double*> pidSetpoints;
 
-    for (int i = 0; i < ACTIVE_FANS; i++)
+    for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++)
     {
-        int fan_id = a_FanIds[i];
         if (m_SensorSettings[fan_id].mode == 1)
         {
             const auto &settings = m_SensorSettings[fan_id];
-            double *input = (settings.sensor_name == "TEMP_1") ? &temperature1 : (settings.sensor_name == "TEMP_2") ? &temperature2 : &temperature3;
+            double *input = (settings.sensor_name == "TEMP_1") ? &a_currentTemperatures[0] : (settings.sensor_name == "TEMP_2") ? &a_currentTemperatures[1] : &a_currentTemperatures[2];
+            
             m_PidOutputs[fan_id] = 0;
             double *output = &m_PidOutputs[fan_id];
             
@@ -574,20 +567,18 @@ void DisplayDataTask(void *pvParameters) {
 
             case ScreenView::Temperatures:
                 {
-                    double t1 = temperature1;
-                    double t2 = temperature2;
-                    double t3 = temperature3;
+                    oledDisplay.printf(" ### TEMPERATURE ###\n\n");
 
-                    if (systemSettings.units == "F") {
-                        if (t1 > -90.0) t1 = (t1 * 1.8) + 32;
-                        if (t2 > -90.0) t2 = (t2 * 1.8) + 32;
-                        if (t3 > -90.0) t3 = (t3 * 1.8) + 32;
+                    for (int i = 0; i < ACTIVE_THERMISTORS; i++) {
+                        double t = a_currentTemperatures[i];
+
+                        if (systemSettings.units == "F") {
+                            if (t > -90.0) t = (t * 1.8) + 32;
+                        }
+
+                        oledDisplay.printf("TEMP: %s\n", (i+1), ((t < 0 && systemSettings.units == "C") || (t < 32 && systemSettings.units == "F") || isnan(t)) ? "N/A" : (String(t, 1) + systemSettings.units).c_str());
                     }
 
-                    oledDisplay.printf(" ### TEMPERATURE ###\n\n");
-                    oledDisplay.printf("TEMP1: %s\n", ((t1 < 0 && systemSettings.units == "C") || (t1 < 32 && systemSettings.units == "F") || isnan(t1)) ? "N/A" : (String(t1, 1) + systemSettings.units).c_str());
-                    oledDisplay.printf("TEMP2: %s\n", ((t2 < 0 && systemSettings.units == "C") || (t2 < 32 && systemSettings.units == "F") || isnan(t2)) ? "N/A" : (String(t2, 1) + systemSettings.units).c_str());
-                    oledDisplay.printf("TEMP3: %s\n", ((t3 < 0 && systemSettings.units == "C") || (t3 < 32 && systemSettings.units == "F") || isnan(t3)) ? "N/A" : (String(t3, 1) + systemSettings.units).c_str());
                     oledDisplay.setCursor(50, 56);
                     oledDisplay.printf(".o..");
                 }
@@ -595,8 +586,8 @@ void DisplayDataTask(void *pvParameters) {
 
             case ScreenView::Fans:
                 oledDisplay.printf("  ### FAN SPEED ### \n\n");
-                for (int i = 0; i < ACTIVE_FANS; i++) {
-                    oledDisplay.printf("FAN %d: %4lu RPM\n", a_FanIds[i], a_CurrentFanSpeedsRpm[i]);
+                for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
+                    oledDisplay.printf("FAN_%s: %4lu RPM\n", String("FAN_" + a_FanNames[fan_id]).c_str(), a_CurrentFanSpeedsRpm[fan_id]);
                 }
                 oledDisplay.setCursor(50, 56);
                 oledDisplay.printf("..o.");
@@ -647,28 +638,27 @@ void NativeUsbTelemetryTask(void *pvParameters) {
 // --- MQTT & Telemetry ---
 
 std::string PrepareTelemetryPayload(const std::string& event) {
-    double t1 = temperature1;
-    double t2 = temperature2;
-    double t3 = temperature3;
-
-    if (systemSettings.units == "F") {
-        if (t1 > -90.0) t1 = (t1 * 1.8) + 32;
-        if (t2 > -90.0) t2 = (t2 * 1.8) + 32;
-        if (t3 > -90.0) t3 = (t3 * 1.8) + 32;
-    }
 
     JsonDocument payload;
     payload["client_id"] = espChipIdStr;
     payload["event"] = event;
     payload["units"] = systemSettings.units;
+
     JsonObject data = payload["data"].to<JsonObject>();
     
-    data["temperature1"] = (t1 > -90.0) ? String(t1, 1).toFloat() : 0.0f;
-    data["temperature2"] = (t2 > -90.0) ? String(t2, 1).toFloat() : 0.0f;
-    data["temperature3"] = (t3 > -90.0) ? String(t3, 1).toFloat() : 0.0f;
+    for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+        double t = a_currentTemperatures[i];
+
+        if (systemSettings.units == "F") {
+            if (t > -90.0) t = (t * 1.8) + 32;
+        }
+
+        String tkey = "temperature" + String(i + 1);
+        data[tkey] = (t > -90.0) ? String(t, 1).toFloat() : 0.0f;
+    }
 
     for (int i = 0; i < ACTIVE_FANS; ++i) {
-        std::string fkey = "FAN_" + std::to_string(a_FanIds[i]);
+        std::string fkey = String("FAN_" + a_FanNames[i]).c_str();
         data[fkey] = a_CurrentFanSpeedsRpm[i];
     }
 
@@ -799,6 +789,22 @@ void InitializeHttpServer() {
         
         request->send(200, "application/json", buffer);
     });
+
+    // API: Scan WiFi Networks
+    webServer.on("/get-sensors", HTTP_GET, [](AsyncWebServerRequest *request) {
+        JsonDocument doc;        
+        String buffer;
+        
+        for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+            int fan_id = a_ThermistorIds[i];
+            String fkey = "TEMP_" + String(fan_id);
+            doc.add(fkey);            
+        }
+
+        serializeJson(doc, buffer);
+        request->send(200, "application/json", buffer);
+    });
+
 
     // API: Get Settings
     webServer.on("/get-settings", HTTP_GET, [](AsyncWebServerRequest *request) {

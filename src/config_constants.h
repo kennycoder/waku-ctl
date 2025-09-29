@@ -40,7 +40,7 @@ constexpr int ACTIVE_LED_STRIPS = 2;
 constexpr int MAX_LEDS_PER_STRIP = 96;
 
 // --- Hardware Counts ---
-constexpr int ACTIVE_THERMISTORS = 2;
+constexpr int ACTIVE_THERMISTORS = 3;
 constexpr int ACTIVE_FANS = 4;
 
 

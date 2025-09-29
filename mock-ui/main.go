@@ -65,6 +65,11 @@ func main() {
 		fmt.Fprintf(w, `{"networks": ["wifi 1", "wifi 2", "wifi 3"]}`)
 	})
 
+	http.HandleFunc("/get-sensors", func(w http.ResponseWriter, r *http.Request) {
+		noCacheHeaders(w)
+		fmt.Fprintf(w, `["TEMP_1", "TEMP_2", "TEMP_3"]`)
+	})
+
 	http.HandleFunc("/get-settings", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
 		fmt.Fprintf(w, `
@@ -108,7 +113,7 @@ func main() {
 		min := 10
 		max := 30
 
-		fmt.Fprintf(w, `{"units": "C", "client_id": "00:1b:63:84:45:e6", "local_timestamp": 946684800, "event": "manual_telemetry", "data": {"temperature1": %d, "temperature2": %d, "FAN_0": 128,"FAN_1": 128,"FAN_2": 128,"FAN_3": 128}}`, (rnd.Intn(max-min+1) + min), (rnd.Intn(max-min+1) + min))
+		fmt.Fprintf(w, `{"units": "C", "client_id": "00:1b:63:84:45:e6", "local_timestamp": 946684800, "event": "manual_telemetry", "data": {"temperature1": %d, "temperature2": %d, "temperature3": %d, "FAN_PUMP": 128,"FAN_1": 128,"FAN_2": 128,"FAN_3": 128}}`, (rnd.Intn(max-min+1) + min), (rnd.Intn(max-min+1) + min), (rnd.Intn(max-min+1) + min))
 	})
 
 	log.Fatal(http.ListenAndServe("127.0.0.1:8081", nil))

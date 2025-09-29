@@ -80,18 +80,17 @@ void InitializeInputs() {
     
     void (*isr_functions[ACTIVE_FANS])() = {Fan0TachIsr, Fan1TachIsr, Fan2TachIsr, Fan3TachIsr};
 
-    for (int i = 0; i < ACTIVE_FANS; i++) {
-        int fan_id = a_FanIds[i];
+    for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
         uint8_t tach_pin = PIN_FAN_MAP[fan_id].tach_pin;
         uint8_t pwm_pin = PIN_FAN_MAP[fan_id].pwm_pin;
 
         pinMode(tach_pin, INPUT_PULLDOWN);
         Serial.printf("Setting pull-down on TACH %d (Pin %d)\n", fan_id, tach_pin);
 
-        attachInterrupt(digitalPinToInterrupt(tach_pin), isr_functions[i], RISING);
+        attachInterrupt(digitalPinToInterrupt(tach_pin), isr_functions[fan_id], RISING);
         Serial.printf("Attached ISR to TACH %d (Pin %d)\n", fan_id, tach_pin);
 
-        ledcAttach(pwm_pin, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
+        ledcAttachChannel(pwm_pin, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS, 4+fan_id);
         Serial.printf("Attaching PWM channel to FAN %d (Pin %d)\n", fan_id, pwm_pin);
 
         // Start fans at 25% until curves are loaded
