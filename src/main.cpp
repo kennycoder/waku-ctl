@@ -570,13 +570,13 @@ void DisplayDataTask(void *pvParameters) {
                     oledDisplay.printf(" ### TEMPERATURE ###\n\n");
 
                     for (int i = 0; i < ACTIVE_THERMISTORS; i++) {
-                        double t = a_currentTemperatures[i];
+                        double t = 0; a_currentTemperatures[i];
 
                         if (systemSettings.units == "F") {
                             if (t > -90.0) t = (t * 1.8) + 32;
                         }
-
-                        oledDisplay.printf("TEMP: %s\n", (i+1), ((t < 0 && systemSettings.units == "C") || (t < 32 && systemSettings.units == "F") || isnan(t)) ? "N/A" : (String(t, 1) + systemSettings.units).c_str());
+                        String print_t = ((t < 0 && systemSettings.units == "C") || (t < 32 && systemSettings.units == "F") || isnan(t)) ? "N/A" : (String(t, 1) + systemSettings.units);
+                        oledDisplay.printf("TEMP_%d: %s\n", (i+1), print_t);
                     }
 
                     oledDisplay.setCursor(50, 56);
@@ -587,7 +587,7 @@ void DisplayDataTask(void *pvParameters) {
             case ScreenView::Fans:
                 oledDisplay.printf("  ### FAN SPEED ### \n\n");
                 for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
-                    oledDisplay.printf("FAN_%s: %4lu RPM\n", String("FAN_" + a_FanNames[fan_id]).c_str(), a_CurrentFanSpeedsRpm[fan_id]);
+                    oledDisplay.printf("FAN_%s: %4lu RPM\n", a_FanNames[fan_id], a_CurrentFanSpeedsRpm[fan_id]);
                 }
                 oledDisplay.setCursor(50, 56);
                 oledDisplay.printf("..o.");

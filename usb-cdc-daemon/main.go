@@ -32,7 +32,7 @@ type TelemetryData struct {
 		Temperature1 float64 `json:"temperature1"`
 		Temperature2 float64 `json:"temperature2"`
 		Temperature3 float64 `json:"temperature3"`
-		FAN0         uint    `json:"FAN_0"`
+		FAN0         uint    `json:"FAN_PUMP"`
 		FAN1         uint    `json:"FAN_1"`
 		FAN2         uint    `json:"FAN_2"`
 		FAN3         uint    `json:"FAN_3"`
