@@ -133,7 +133,7 @@ void InitializeFanCurves() {
 
         if (error || fan_curves == "{}" || fan_curves == "[]") {
             Serial.printf("No/Invalid settings for %s, using defaults.\n", fan_key.c_str());
-            m_SensorSettings[fan_id].sensor_name = "TEMP_1";
+            m_SensorSettings[fan_id].sensor_id = 0;
             m_SensorSettings[fan_id].temperature_alarm_threshold = 999;
             m_SensorSettings[fan_id].rpm_alarm_threshold = -1;
             m_SensorSettings[fan_id].step_duration_seconds = 1;
@@ -148,7 +148,7 @@ void InitializeFanCurves() {
             m_SensorSettings[fan_id].pid_kd = 1;
             
 
-            fan_doc["sensor"] = m_SensorSettings[fan_id].sensor_name;
+            fan_doc["sensor"] = m_SensorSettings[fan_id].sensor_id;
             fan_doc["curves"] = fan_doc.to<JsonArray>();
             for (const auto& setting : m_SensorSettings[fan_id].fan_speed_curve) {
                 JsonObject curve_point = fan_doc["curves"].add<JsonObject>();
@@ -169,7 +169,7 @@ void InitializeFanCurves() {
             serializeJson(fan_doc, settings_json);
             systemPreferences.putString(fan_key.c_str(), settings_json);
         } else {
-            m_SensorSettings[fan_id].sensor_name = fan_doc["sensor"].as<String>();
+            m_SensorSettings[fan_id].sensor_id = fan_doc["sensor"].as<int>();
             m_SensorSettings[fan_id].temperature_alarm_threshold = fan_doc["temp_th"].as<int>();
             m_SensorSettings[fan_id].rpm_alarm_threshold = fan_doc["duty_th"].as<int>();
             m_SensorSettings[fan_id].step_duration_seconds = fan_doc["sud_dur"].as<uint8_t>();
@@ -187,12 +187,8 @@ void InitializeFanCurves() {
     }
 
     // Set initial fan speeds based on current temps
-    double t1 = ReadTemperature(0);
-    double t2 = ReadTemperature(1);
-    double t3 = ReadTemperature(2);
-
     for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
-        const double temp = (m_SensorSettings[fan_id].sensor_name == "TEMP_1") ? t1 : (m_SensorSettings[fan_id].sensor_name == "TEMP_2") ? t2 : t3;
+        const double temp = 25; 
         const int target_speed = (temp > 0) ? CalculateFanSpeed(fan_id, temp) : MapFanPercentToPwm(25);
 
         m_TargetFanRpm[fan_id].current_rpm = target_speed;
@@ -205,6 +201,7 @@ void InitializeFanCurves() {
 // --- Core Logic & Tasks ---
 
 void setup() {
+    init_globals();
     USB.PID(0x82E5);
     USB.VID(0x303A);
     USB.productName("WaKu Controller");
@@ -272,6 +269,19 @@ void loop() {
         for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
             a_currentTemperatures[i] = ReadTemperature(i);
         }
+
+        if (ACTIVE_THERMISTORS > 1) {
+            int k = 0;
+            for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+                for (int j = i + 1; j < ACTIVE_THERMISTORS; ++j) {
+                    a_currentTemperatures[ACTIVE_THERMISTORS + k] = a_currentTemperatures[j] - a_currentTemperatures[i];
+                    // Serial.printf("Delta T%d_T%d: %.2f C\n", a_ThermistorIds[i]+1, a_ThermistorIds[j]+1, a_currentTemperatures[ACTIVE_THERMISTORS + k]);
+                    k++;
+                }
+            }
+        }
+
+        Serial.printf("------------\n");
     }
 
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
@@ -317,7 +327,7 @@ void MonitorStatesTask(void *pvParameters) {
         for (int fan_id = 0; fan_id < ACTIVE_FANS; ++fan_id) {
             const auto& settings = m_SensorSettings[fan_id];
 
-            const double temp = (settings.sensor_name == "TEMP_1") ? a_currentTemperatures[0] : (settings.sensor_name == "TEMP_2") ? a_currentTemperatures[1] : a_currentTemperatures[2];
+            const double temp = a_currentTemperatures[settings.sensor_id];
             const unsigned long current_rpm = a_CurrentFanSpeedsRpm[fan_id];
 
             // Temperature Alarm
@@ -327,7 +337,7 @@ void MonitorStatesTask(void *pvParameters) {
                     digitalWrite(PIN_PWR, HIGH); // Cut power
                 }
                 temp_alarm_active = true;
-                if (!b_TempAlarmFiring) Serial.printf("ALARM: Temp high on %s (%.1fC)\n", settings.sensor_name.c_str(), temp);
+                if (!b_TempAlarmFiring) Serial.printf("ALARM: Temp high on %s (%.1fC)\n", settings.sensor_id, temp);
             }
 
             // RPM Alarm (only if threshold is set, > 0)
@@ -382,7 +392,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
             }
 
             const auto& settings = m_SensorSettings[fan_id];
-            const double temp = (settings.sensor_name == "TEMP_1") ? a_currentTemperatures[0] : (settings.sensor_name == "TEMP_2") ? a_currentTemperatures[1] : a_currentTemperatures[2];
+            const double temp = a_currentTemperatures[settings.sensor_id];
 
 
             if (temp <= 0) {
@@ -461,7 +471,7 @@ void ProcessPIDControllerTask(void *pvParameters)
         if (m_SensorSettings[fan_id].mode == 1)
         {
             const auto &settings = m_SensorSettings[fan_id];
-            double *input = (settings.sensor_name == "TEMP_1") ? &a_currentTemperatures[0] : (settings.sensor_name == "TEMP_2") ? &a_currentTemperatures[1] : &a_currentTemperatures[2];
+            double *input = &a_currentTemperatures[settings.sensor_id];
             
             m_PidOutputs[fan_id] = 0;
             double *output = &m_PidOutputs[fan_id];
@@ -653,13 +663,30 @@ std::string PrepareTelemetryPayload(const std::string& event) {
             if (t > -90.0) t = (t * 1.8) + 32;
         }
 
-        String tkey = "temperature" + String(i + 1);
-        data[tkey] = (t > -90.0) ? String(t, 1).toFloat() : 0.0f;
+        String tkey = "TEMP_" + String(i + 1);
+        data["temps"][tkey] = (t > -90.0) ? String(t, 1).toFloat() : 0.0f;
+    }
+
+    if (ACTIVE_THERMISTORS > 1) {
+        int k = 0;
+        for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+            for (int j = i + 1; j < ACTIVE_THERMISTORS; ++j) {
+                double t = a_currentTemperatures[ACTIVE_THERMISTORS + k];
+
+                if (systemSettings.units == "F") {
+                    if (t > -90.0) t = (t * 1.8) + 32;
+                }
+
+                String tkey = "DELTA_T" + String(a_ThermistorIds[i]+1) + "_T" + String(a_ThermistorIds[j]+1);
+                data["temps"][tkey] = (t > -90.0) ? String(t, 1).toFloat() : 0.0f;
+                k++;
+            }
+        }
     }
 
     for (int i = 0; i < ACTIVE_FANS; ++i) {
         std::string fkey = String("FAN_" + a_FanNames[i]).c_str();
-        data[fkey] = a_CurrentFanSpeedsRpm[i];
+        data["fans"][fkey] = a_CurrentFanSpeedsRpm[i];
     }
 
     String buffer;
@@ -796,9 +823,21 @@ void InitializeHttpServer() {
         String buffer;
         
         for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
-            int fan_id = a_ThermistorIds[i];
-            String fkey = "TEMP_" + String(fan_id);
-            doc.add(fkey);            
+            int f_idx = a_ThermistorIds[i];
+            String f_key = "TEMP_" + String(f_idx+1);
+            doc[f_idx] = f_key;
+        }
+
+        // add deltas for each sensor combination if more than 1 sensor and only unique combinations, e.g. T1-T2, T1-T3, T2-T3
+        if (ACTIVE_THERMISTORS > 1) {
+            int k = 0;
+            for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+                for (int j = i + 1; j < ACTIVE_THERMISTORS; ++j) {
+                    String f_key = "DELTA_T" + String(a_ThermistorIds[i]+1) + "_T" + String(a_ThermistorIds[j]+1);
+                    doc[ACTIVE_THERMISTORS + k] = f_key;
+                    k++;
+                }
+            }
         }
 
         serializeJson(doc, buffer);
@@ -881,7 +920,7 @@ void InitializeHttpServer() {
         JsonDocument doc;
         for (const auto& [key, value] : m_SensorSettings) {
             String fkey = "FAN_" + String(key);
-            doc[fkey]["sensor"] = value.sensor_name;
+            doc[fkey]["sensor"] = value.sensor_id;
             doc[fkey]["temp_th"] = value.temperature_alarm_threshold;
             doc[fkey]["duty_th"] = value.rpm_alarm_threshold;
             doc[fkey]["sud_dur"] = value.step_duration_seconds;
@@ -919,7 +958,7 @@ void InitializeHttpServer() {
 
                 JsonDocument fan_doc;
                 deserializeJson(fan_doc, fan_data);
-                m_SensorSettings[fan_id].sensor_name = fan_doc["sensor"].as<String>();
+                m_SensorSettings[fan_id].sensor_id = fan_doc["sensor"].as<int>();
                 m_SensorSettings[fan_id].temperature_alarm_threshold = fan_doc["temp_th"].as<int>();
                 m_SensorSettings[fan_id].rpm_alarm_threshold = fan_doc["duty_th"].as<int>();
                 m_SensorSettings[fan_id].step_duration_seconds = fan_doc["sud_dur"].as<uint8_t>();

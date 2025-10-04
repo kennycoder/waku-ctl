@@ -26,8 +26,17 @@
     <div class="card">
       <h2>Current status</h2>
 
-      <div class="data-container" id="data-container">
-        <!-- Data will be loaded here -->
+      <div class="data-section">
+        <h3>Temperatures</h3>
+        <div class="data-container" id="temps-container">
+          <!-- Temperature data will be loaded here -->
+        </div>
+      </div>
+      <div class="data-section">
+        <h3>Fans</h3>
+        <div class="data-container" id="fans-container">
+          <!-- Fan data will be loaded here -->
+        </div>
       </div>
     </div>
   </div>
@@ -38,75 +47,52 @@
         url: '/get-data',
         type: 'GET',
         dataType: 'json',
-        success: function(data) {
-          // Update the content with the fetched data
-          $('#data-container').empty(); // Clear previous data
+        success: function(response) {
+          const data = response.data;
+          const units = response.units;
+          const tempsContainer = $('#temps-container');
+          const fansContainer = $('#fans-container');
+          tempsContainer.empty();
+          fansContainer.empty();
 
-          // Temperature 1
-          if (data.data.temperature1 !== undefined) {
-            $('#data-container').append(`
-              <div class="data-item">
-                <span class="data-label">Temperature 1:</span>
-                <div class="data-value">${data.data.temperature1 > 0 ? (Math.round((data.data.temperature1 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-              </div>
-            `);
+          // Process temperatures
+          if (data.temps) {
+            for (const key in data.temps) {
+              if (data.temps.hasOwnProperty(key)) {
+                const label = key.replace(/_/g, ' ');
+                const value = data.temps[key];
+                const displayValue = value > 0 ? (Math.round((value + Number.EPSILON) * 100) / 100) : "N/A";
+                if (displayValue != "N/A") {
+                  tempsContainer.append(`
+                    <div class="data-item">
+                      <span class="data-label">${label}:</span>
+                      <div class="data-value">${displayValue}°${units}</div>
+                    </div>
+                  `);
+                }
+              }
+            }
           }
 
-          // Temperature 2
-          if (data.data.temperature2 !== undefined) {
-            $('#data-container').append(`
-              <div class="data-item">
-                <span class="data-label">Temperature 2:</span>
-                <div class="data-value">${data.data.temperature2 > 0 ? (Math.round((data.data.temperature2 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-              </div>
-            `);
+          // Process fans
+          if (data.fans) {
+            for (const key in data.fans) {
+              if (data.fans.hasOwnProperty(key)) {
+                const label = key.replace(/_/g, ' ');
+                const value = data.fans[key];
+                fansContainer.append(`
+                  <div class="data-item">
+                    <span class="data-label">${label} Speed:</span>
+                    <div class="data-value">${value} RPM</div>
+                  </div>
+                `);
+              }
+            }
           }
-
-          // Temperature 3
-          if (data.data.temperature3 !== undefined) {
-            $('#data-container').append(`
-              <div class="data-item">
-                <span class="data-label">Temperature 3:</span>
-                <div class="data-value">${data.data.temperature3 > 0 ? (Math.round((data.data.temperature3 + Number.EPSILON) * 100) / 100) : "N/A"}°${data.units}</div>
-              </div>
-            `);          
-          }
-
-          // Fan Pump Speed
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Fan Pump Speed:</span>
-              <div class="data-value">${data.data.FAN_PUMP} RPM</div>
-            </div>
-          `);
-
-          // Fan 1 Speed
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Fan 1 Speed:</span>
-              <div class="data-value">${data.data.FAN_1} RPM</div>
-            </div>
-          `);
-
-          // Fan 2 Speed
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Fan 2 Speed:</span>
-              <div class="data-value">${data.data.FAN_2} RPM</div>
-            </div>
-          `);
-
-          // Fan 3 Speed
-          $('#data-container').append(`
-            <div class="data-item">
-              <span class="data-label">Fan 3 Speed:</span>
-              <div class="data-value">${data.data.FAN_3} RPM</div>
-            </div>
-          `);
         },
         error: function(error) {
           console.error('Error fetching data:', error);
-          // Handle error, e.g., display an error message
+          $('#data-container').html('<p>Error loading data. Please try again later.</p>');
         }
       });
     }

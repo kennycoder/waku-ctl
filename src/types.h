@@ -37,7 +37,7 @@ struct FanSpeedPoint {
 };
 
 struct TemperatureSensorSettings {
-  String sensor_name;
+  int sensor_id;
   int temperature_alarm_threshold = 999;
   int rpm_alarm_threshold = -1;
   uint8_t step_duration_seconds = 1;

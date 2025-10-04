@@ -29,7 +29,7 @@
 #include "pins.h"
 
 // --- Global Variables ---
-extern double a_currentTemperatures[ACTIVE_THERMISTORS];
+extern double a_currentTemperatures[ACTIVE_THERMISTORS_WITH_DELTAS];
 
 // System State
 extern unsigned long gHoldButtonCounter;
@@ -66,8 +66,8 @@ extern std::map<int, LedSettings> m_LedSettings;
 extern CRGB a_LedBuffers[ACTIVE_LED_STRIPS][MAX_LEDS_PER_STRIP];
 
 // Thermistor/Fan IDs
-extern int a_ThermistorIds[ACTIVE_THERMISTORS];
-extern String a_FanNames[ACTIVE_FANS];
+extern std::vector<int> a_ThermistorIds;
+extern std::vector<String> a_FanNames;
 
 // Fan State
 extern unsigned long a_CurrentFanSpeedsRpm[ACTIVE_FANS];
@@ -82,5 +82,7 @@ extern volatile unsigned long fan0_TS1, fan0_TS2;
 extern volatile unsigned long fan1_TS1, fan1_TS2;
 extern volatile unsigned long fan2_TS1, fan2_TS2;
 extern volatile unsigned long fan3_TS1, fan3_TS2;
+
+void init_globals();
 
 #endif // GLOBALS_H

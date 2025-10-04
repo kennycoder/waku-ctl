@@ -35,10 +35,14 @@ double ReadTemperature(int channel) {
     double kelvin = 1.0 / inverse_kelvin;
 
     double celsius = kelvin - 273.15;
-    
-    // printf("Temperature on channel %d: %.2f C (Resistance: %.2f Ohm)\n", channel, celsius, resistance);
 
-    celsius = std::min(std::max(celsius, -40.0), 125.0); // Clamp to -40 to 125 C
+    // Serial.printf("ADC Channel %d: Raw=%d, Voltage=%.3f V, Resistance=%.2f Ohm, Temperature=%.2f C\n", channel, adc_raw, voltage, resistance, celsius);
+
+    celsius = std::min(std::max(celsius, 0.0), 100.0); // Clamp to 0 to 100 C
+
+    if (isnan(celsius)) {
+        celsius = 0.0; // Error value
+    }
 
     return celsius;
 }

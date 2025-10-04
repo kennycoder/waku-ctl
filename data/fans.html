@@ -253,11 +253,11 @@
 
           const temp_src_select_label = $(`<label for="sensor_id-${key}">Temperature source:</label>`);
           const temp_src_select = $(`<select style="bottom: 10px; right: 10px;"></select>`).attr('id', `sensor_id-${key}`)
-          for (const t_sensor of available_sensors) {
+          for (const [idx, t_sensor] of available_sensors.entries()) {
             temp_src_select.append($('<option>', { 
-              value: t_sensor,
+              value: idx,
               text : t_sensor,
-              selected: active_sensor == t_sensor
+              selected: active_sensor == idx
             }));
           } 
           temp_src_select_label.appendTo(controlsContainer);

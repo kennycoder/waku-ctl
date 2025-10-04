@@ -1,9 +1,10 @@
+#include <numeric>
 #include "globals.h"
 
 
 // --- Global Variable Definitions ---
 
-double a_currentTemperatures[ACTIVE_THERMISTORS] = {0.0f, 0.0f, 0.0f};
+double a_currentTemperatures[ACTIVE_THERMISTORS_WITH_DELTAS];
 
 // System State
 unsigned long gHoldButtonCounter = 0;
@@ -39,8 +40,8 @@ std::map<int, LedSettings> m_LedSettings;
 CRGB a_LedBuffers[ACTIVE_LED_STRIPS][MAX_LEDS_PER_STRIP];
 
 // Thermistor/Fan IDs
-int a_ThermistorIds[ACTIVE_THERMISTORS] = {1, 2, 3};
-String a_FanNames[ACTIVE_FANS] = {"PUMP", "1", "2", "3"};
+std::vector<int> a_ThermistorIds;
+std::vector<String> a_FanNames;
 
 // Fan State
 unsigned long a_CurrentFanSpeedsRpm[ACTIVE_FANS] = {999, 999, 999, 999};
@@ -68,3 +69,16 @@ volatile unsigned long fan0_TS1 = 0, fan0_TS2 = 0;
 volatile unsigned long fan1_TS1 = 0, fan1_TS2 = 0;
 volatile unsigned long fan2_TS1 = 0, fan2_TS2 = 0;
 volatile unsigned long fan3_TS1 = 0, fan3_TS2 = 0;
+
+void init_globals() {
+    a_ThermistorIds.resize(ACTIVE_THERMISTORS);
+    std::iota(a_ThermistorIds.begin(), a_ThermistorIds.end(), 0);
+
+    a_FanNames.resize(ACTIVE_FANS);
+    if (ACTIVE_FANS > 0) {
+        a_FanNames[0] = "PUMP";
+        for (int i = 1; i < ACTIVE_FANS; ++i) {
+            a_FanNames[i] = String(i);
+        }
+    }
+}
