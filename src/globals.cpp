@@ -45,13 +45,8 @@ std::vector<String> a_FanNames;
 
 // Fan State
 unsigned long a_CurrentFanSpeedsRpm[ACTIVE_FANS] = {999, 999, 999, 999};
-std::map<int, FanRpmTarget> m_TargetFanRpm = {
-    {0, {0, 0, 0, 0, false}},
-    {1, {0, 0, 0, 0, false}},
-    {2, {0, 0, 0, 0, false}},
-    {3, {0, 0, 0, 0, false}}
-};
 
+std::map<int, FanRpmTarget> m_TargetFanRpm;
 std::map<int, double> m_PidOutputs;
 std::map<int, int> m_CurrentFanPwmValues;
 
@@ -79,6 +74,9 @@ void init_globals() {
         a_FanNames[0] = "PUMP";
         for (int i = 1; i < ACTIVE_FANS; ++i) {
             a_FanNames[i] = String(i);
+        }
+        for (int i = 0; i < ACTIVE_FANS; ++i) {
+            m_TargetFanRpm[i] = {0, 0, 0, 0, false};
         }
     }
 }
