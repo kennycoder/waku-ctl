@@ -50,12 +50,22 @@ std::map<int, FanRpmTarget> m_TargetFanRpm;
 std::map<int, double> m_PidOutputs;
 std::map<int, int> m_CurrentFanPwmValues;
 
+// std::map<int, FanPinPair> PIN_FAN_MAP = {
+//     {0, {14, 13}},
+//     {1, {12, 11}},
+//     {2, {10, 9}},
+//     {3, {7, 6}}
+// };
+
+// New Board pin layout
+
 std::map<int, FanPinPair> PIN_FAN_MAP = {
-    {0, {14, 13}},
-    {1, {12, 11}},
-    {2, {10, 9}},
-    {3, {7, 6}}
+    {0, {6, 7}},
+    {1, {9, 10}},
+    {2, {11, 12}},
+    {3, {13, 14}}
 };
+
 
 unsigned long lastTach = 0;
 
