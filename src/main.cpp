@@ -281,7 +281,7 @@ void loop() {
             }
         }
 
-        Serial.printf("------------\n");
+       //  Serial.printf("------------\n");
     }
 
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
