@@ -540,22 +540,32 @@ void GenerateTachSignalTask(void *pvParameters) {
         if (systemSettings.fan_passthrough >= 0 && systemSettings.fan_passthrough < ACTIVE_FANS) {
             unsigned long rpm = a_CurrentFanSpeedsRpm[systemSettings.fan_passthrough];
 
-            // Tach signal is 2 pulses per revolution.
-            // Frequency (Hz) = RPM / 60 * 2
+            if (rpm > 0) {
+                // Tach signal is 2 pulses per revolution.
+                // Frequency (Hz) = RPM / 60 * 2 = RPM / 30
+                // Period (s) = 1 / Frequency = 30 / RPM
+                // Period (ms) = 30000 / RPM
+                // We need half period for high and half for low state.
+                unsigned long half_period_ms = 15000 / rpm;
 
-            float frequency = (float)rpm / 30.0;
-            frequency = frequency < 0 ? 0 : frequency;
-            if (rpm != lastTach) {
-                if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-                    Serial.printf("Generating TACH signal at %.2f Hz for RPM %lu\n", frequency, rpm);
+                if (half_period_ms > 0) {
+                    digitalWrite(PIN_TACH, HIGH);
+                    vTaskDelay(pdMS_TO_TICKS(half_period_ms));
+                    digitalWrite(PIN_TACH, LOW);
+                    vTaskDelay(pdMS_TO_TICKS(half_period_ms));
+                } else {
+                    digitalWrite(PIN_TACH, LOW);
+                    vTaskDelay(pdMS_TO_TICKS(100)); // RPM is high, but not high enough for 1ms delay, so we just wait
                 }
-                ledcWriteTone(PIN_TACH, frequency);
-                lastTach = rpm;
-            } 
+            } else {
+                digitalWrite(PIN_TACH, LOW);
+                vTaskDelay(pdMS_TO_TICKS(250)); // No RPM, wait before checking again.
+            }
+        } else {
+            digitalWrite(PIN_TACH, LOW);
+            vTaskDelay(pdMS_TO_TICKS(250)); // Passthrough disabled
         }
-
-        vTaskDelay(pdMS_TO_TICKS(250));
-    }        
+    }
 }
 
 void DisplayDataTask(void *pvParameters) {
@@ -580,12 +590,13 @@ void DisplayDataTask(void *pvParameters) {
                     oledDisplay.printf(" ### TEMPERATURE ###\n\n");
 
                     for (int i = 0; i < ACTIVE_THERMISTORS; i++) {
-                        double t = 0; a_currentTemperatures[i];
+                        double t = a_currentTemperatures[i];
 
                         if (systemSettings.units == "F") {
                             if (t > -90.0) t = (t * 1.8) + 32;
                         }
                         String print_t = ((t < 0 && systemSettings.units == "C") || (t < 32 && systemSettings.units == "F") || isnan(t)) ? "N/A" : (String(t, 1) + systemSettings.units);
+                        Serial.printf("TEMP_%d: %s\n", (i+1), print_t);
                         oledDisplay.printf("TEMP_%d: %s\n", (i+1), print_t);
                     }
 
@@ -761,7 +772,7 @@ void InitializeHttpServer() {
     webServer.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) { StreamFile("/settings.html", "text/html", false, request); });
     webServer.on("/rgb", HTTP_GET, [](AsyncWebServerRequest *request) { StreamFile("/rgb.html", "text/html", false, request); });
     webServer.on("/all-jquery-deps.min.js", [](AsyncWebServerRequest *request) { StreamFile("/all-jquery-deps.min.js", "text/javascript", true, request); });
-    webServer.on("/styles.css", [](AsyncWebServerRequest *request) { StreamFile("/styles.css", "text/javascript", true, request); });
+    webServer.on("/styles.css", [](AsyncWebServerRequest *request) { StreamFile("/styles.css", "text/css", true, request); });
     webServer.on("/logo.png", [](AsyncWebServerRequest *request) { StreamFile("/logo.png", "text/image", true, request); });
 
 

@@ -66,9 +66,8 @@ void InitializeOutputs() {
     pinMode(PIN_LED_HEADER_2, OUTPUT);
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_PWR, OUTPUT);
+    pinMode(PIN_TACH, OUTPUT);
     digitalWrite(PIN_PWR, LOW);
-
-    ledcAttach(PIN_TACH, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
 
     pinMode(PIN_LED_EXT_CTRL_1, OUTPUT);
     digitalWrite(PIN_LED_EXT_CTRL_1, LOW);
