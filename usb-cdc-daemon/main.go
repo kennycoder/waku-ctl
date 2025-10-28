@@ -29,13 +29,17 @@ type TelemetryData struct {
 	Event    string `json:"event"`
 	Units    string `json:"units"`
 	Data     struct {
-		Temperature1 float64 `json:"temperature1"`
-		Temperature2 float64 `json:"temperature2"`
-		Temperature3 float64 `json:"temperature3"`
-		FAN0         uint    `json:"FAN_PUMP"`
-		FAN1         uint    `json:"FAN_1"`
-		FAN2         uint    `json:"FAN_2"`
-		FAN3         uint    `json:"FAN_3"`
+		Temps struct {
+			Temperature1 float64 `json:"TEMP_1"`
+			Temperature2 float64 `json:"TEMP_2"`
+			Temperature3 float64 `json:"TEMP_3"`
+		}
+		Fans struct {
+			FAN0 uint `json:"FAN_PUMP"`
+			FAN1 uint `json:"FAN_1"`
+			FAN2 uint `json:"FAN_2"`
+			FAN3 uint `json:"FAN_3"`
+		}
 	} `json:"data"`
 }
 
@@ -250,13 +254,13 @@ func processTelemetry(jsonStr string) {
 
 	// Define sensor configurations
 	sensorInfos := []sensorRegistryInfo{
-		{"Temp0", "Temperature sensor 0", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temperature1) }},
-		{"Temp1", "Temperature sensor 1", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temperature2) }},
-		{"Temp2", "Temperature sensor 2", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temperature3) }},
-		{"Fan0", "Fan Pump Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN0) }},
-		{"Fan1", "Fan 1 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN1) }},
-		{"Fan2", "Fan 2 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN2) }},
-		{"Fan3", "Fan 3 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.FAN3) }},
+		{"Temp0", "Temperature sensor 0", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.Temperature1) }},
+		{"Temp1", "Temperature sensor 1", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.Temperature2) }},
+		{"Temp2", "Temperature sensor 2", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.Temperature3) }},
+		{"Fan0", "Fan Pump Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN0) }},
+		{"Fan1", "Fan 1 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN1) }},
+		{"Fan2", "Fan 2 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN2) }},
+		{"Fan3", "Fan 3 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN3) }},
 	}
 
 	// Open/Create the main application key

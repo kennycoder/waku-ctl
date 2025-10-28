@@ -266,8 +266,15 @@ void loop() {
         taskScheduler.execute();
         LoopMqttClient();
 
+        int t_id = 0;
         for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
-            a_currentTemperatures[i] = ReadTemperature(i);
+            // IMPORTANT: This is a workaround for a hardware layout where T0 and T1 thermistors are swapped on the board.
+            // TODO: Fix hardware design in future revisions to avoid this workaround.
+            t_id = i;
+            if (i == 0) t_id = 1;
+            else if (i == 1) t_id = 0;
+
+            a_currentTemperatures[t_id] = ReadTemperature(i);
         }
 
         if (ACTIVE_THERMISTORS > 1) {
