@@ -44,6 +44,7 @@ CrossRefPorts=3
 CrossRefCrossSheets=1
 CrossRefSheetEntries=0
 CrossRefFollowFromMainSettings=1
+CurrentVariant=waku-ctl-prototype
 
 [Preferences]
 PrefsVaultGUID=
@@ -135,7 +136,7 @@ GenerateClassCluster=0
 DocumentUniqueId=KQKUAHBW
 
 [Document6]
-DocumentPath=waku-ctl.cam
+DocumentPath=waku-ctl.Cam
 AnnotationEnabled=1
 AnnotateStartValue=1
 AnnotationIndexControlEnabled=0
@@ -151,75 +152,180 @@ DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=
 
+[Document7]
+DocumentPath=waku-ctl.OutJob
+AnnotationEnabled=1
+AnnotateStartValue=1
+AnnotationIndexControlEnabled=0
+AnnotateSuffix=
+AnnotateScope=All
+AnnotateOrder=-1
+DoLibraryUpdate=1
+DoDatabaseUpdate=1
+ClassGenCCAutoEnabled=1
+ClassGenCCAutoRoomEnabled=0
+ClassGenNCAutoScope=None
+DItemRevisionGUID=
+GenerateClassCluster=0
+DocumentUniqueId=
+
+[ProjectVariant1]
+UniqueId=1a6fc9e0-cb79-4ed6-a080-2d1f21c36e0a
+Description=waku-ctl-prototype
+AllowFabrication=0
+ParameterCount=0
+VariationCount=0
+ParamVariationCount=0
+
 [GeneratedDocument1]
-DocumentPath=Project Outputs for waku-ctl-board\Design Rule Check - waku-ctl.html
+DocumentPath=Project Outputs for waku-ctl-board\BOM\Bill of Materials-waku-ctl-board(waku-ctl-prototype).csv
 DItemRevisionGUID=
 
 [GeneratedDocument2]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl.EXTREP
+DocumentPath=Project Outputs for waku-ctl-board\BOM\Bill of Materials-waku-ctl-board(waku-ctl-prototype).xlsx
 DItemRevisionGUID=
 
 [GeneratedDocument3]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl.REP
+DocumentPath=Project Outputs for waku-ctl-board\Design Rule Check - waku-ctl.html
 DItemRevisionGUID=
 
 [GeneratedDocument4]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Plane_1.gbr
+DocumentPath=Project Outputs for waku-ctl-board\Pick Place\Pick Place for waku-ctl(waku-ctl-prototype).csv
 DItemRevisionGUID=
 
 [GeneratedDocument5]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Signal_1.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl.EXTREP
 DItemRevisionGUID=
 
 [GeneratedDocument6]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Signal_Bot.gbr
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl.EXTREP
 DItemRevisionGUID=
 
 [GeneratedDocument7]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Signal_Top.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl.REP
 DItemRevisionGUID=
 
 [GeneratedDocument8]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Drawing_1.gbr
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl.REP
 DItemRevisionGUID=
 
 [GeneratedDocument9]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Drillmap_1.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Plane_1.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument10]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Legend_Bot.gbr
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Plane_1.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument11]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Legend_Top.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Signal_1.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument12]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_NPTH_Drill.gbr
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Signal_1.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument13]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Paste_Bot.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Signal_Bot.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument14]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Paste_Top.gbr
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Signal_Bot.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument15]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Profile.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Signal_Top.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument16]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_PTH_Drill.gbr
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Copper_Signal_Top.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument17]
-DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Soldermask_Bot.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Drawing_1.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument18]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Drawing_1.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument19]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Drillmap_1.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument20]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Drillmap_1.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument21]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Legend_Bot.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument22]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Legend_Bot.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument23]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Legend_Top.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument24]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Legend_Top.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument25]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_NPTH_Drill.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument26]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_NPTH_Drill.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument27]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Paste_Bot.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument28]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Paste_Bot.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument29]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Paste_Top.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument30]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Paste_Top.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument31]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Profile.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument32]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Profile.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument33]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_PTH_Drill.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument34]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_PTH_Drill.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument35]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Soldermask_Bot.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument36]
+DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Soldermask_Bot.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument37]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Soldermask_Top.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument38]
 DocumentPath=Project Outputs for waku-ctl-board\waku-ctl_Soldermask_Top.gbr
 DItemRevisionGUID=
 

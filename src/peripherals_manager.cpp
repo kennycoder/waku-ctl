@@ -55,6 +55,7 @@ void InitializeScreen() {
     oledDisplay.clearDisplay();
     oledDisplay.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
     oledDisplay.setTextSize(1);
+    oledDisplay.setRotation(2);
     oledDisplay.println("WaKu-ctl Starting...");
     oledDisplay.display();
     delay(1000);
