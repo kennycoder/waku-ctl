@@ -201,6 +201,7 @@ void InitializeFanCurves() {
 // --- Core Logic & Tasks ---
 
 void setup() {
+
     init_globals();
     USB.PID(0x82E5);
     USB.VID(0x303A);

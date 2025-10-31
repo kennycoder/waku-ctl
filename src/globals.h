@@ -1,6 +1,8 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#define NO_ADAFRUIT_SSD1306_COLOR_COMPATIBILITY
+
 #include <map>
 #include <vector>
 #include <stdint.h>

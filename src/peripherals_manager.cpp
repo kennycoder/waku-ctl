@@ -55,7 +55,7 @@ void InitializeScreen() {
     oledDisplay.clearDisplay();
     oledDisplay.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
     oledDisplay.setTextSize(1);
-    oledDisplay.setRotation(2);
+    //oledDisplay.setRotation(2);
     oledDisplay.println("WaKu-ctl Starting...");
     oledDisplay.display();
     delay(1000);
@@ -75,6 +75,18 @@ void InitializeOutputs() {
     pinMode(PIN_LED_EXT_CTRL_2, OUTPUT);
     digitalWrite(PIN_LED_EXT_CTRL_2, LOW);
 
+    for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
+        uint8_t pwm_pin = PIN_FAN_MAP[fan_id].pwm_pin;
+
+        pinMode(pwm_pin, OUTPUT);
+
+        ledcAttach(pwm_pin, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
+        Serial.printf("Attaching PWM channel to FAN %d (Pin %d)\n", fan_id, pwm_pin);
+
+        // Start fans at 25% until curves are loaded
+        ledcWrite(pwm_pin, MapFanPercentToPwm(25));
+    }    
+
     Serial.println("Outputs configured.");
 }
 
@@ -86,19 +98,12 @@ void InitializeInputs() {
 
     for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
         uint8_t tach_pin = PIN_FAN_MAP[fan_id].tach_pin;
-        uint8_t pwm_pin = PIN_FAN_MAP[fan_id].pwm_pin;
 
         pinMode(tach_pin, INPUT_PULLDOWN);
         Serial.printf("Setting pull-down on TACH %d (Pin %d)\n", fan_id, tach_pin);
 
         attachInterrupt(digitalPinToInterrupt(tach_pin), isr_functions[fan_id], RISING);
         Serial.printf("Attached ISR to TACH %d (Pin %d)\n", fan_id, tach_pin);
-
-        ledcAttachChannel(pwm_pin, PWM_SIGNAL_FREQUENCY_HZ, PWM_RESOLUTION_BITS, 4+fan_id);
-        Serial.printf("Attaching PWM channel to FAN %d (Pin %d)\n", fan_id, pwm_pin);
-
-        // Start fans at 25% until curves are loaded
-        ledcWrite(pwm_pin, MapFanPercentToPwm(25));
     }
 
     Serial.println("Inputs configured.");
