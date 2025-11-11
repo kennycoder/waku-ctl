@@ -17,11 +17,11 @@ constexpr int8_t PIN_SCL = 17; // GPIO9 as I2C SCL
 constexpr int8_t PIN_OLED_RESET = -1; // Reset pin # (-1 if sharing Arduino reset pin)
 
 // --- LED Pins ---
-constexpr uint8_t PIN_LED_HEADER_1 = 47; // LED header #1 Data
-constexpr uint8_t PIN_LED_HEADER_2 = 48; // LED header #2 Data
+constexpr uint8_t PIN_LED_HEADER_1 = 8; // LED header #1 Data
+constexpr uint8_t PIN_LED_HEADER_2 = 18; // LED header #2 Data
 
-constexpr uint8_t PIN_LED_EXT_CTRL_1 = 35; // LED header #1 External Control | MUX A
-constexpr uint8_t PIN_LED_EXT_CTRL_2 = 36; // LED header #2 External Control | MUX B
+constexpr uint8_t PIN_LED_EXT_CTRL_1 = 1; // LED header #1 External Control | MUX A
+constexpr uint8_t PIN_LED_EXT_CTRL_2 = 2; // LED header #2 External Control | MUX B
 
 // --- Fan Pins ---
 extern std::map<int, FanPinPair> PIN_FAN_MAP;

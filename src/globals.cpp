@@ -60,10 +60,10 @@ std::map<int, int> m_CurrentFanPwmValues;
 // New Board pin layout
 
 std::map<int, FanPinPair> PIN_FAN_MAP = {
-    {0, {6, 7}},
-    {1, {9, 10}},
-    {2, {11, 12}},
-    {3, {13, 14}}
+    {0, {10, 14}},
+    {1, {11, 21}},
+    {2, {12, 47}},
+    {3, {13, 48}}
 };
 
 

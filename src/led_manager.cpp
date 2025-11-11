@@ -13,9 +13,9 @@ void SwapLedChannel(LedChannel channel, int led_strip_index) {
     uint8_t int_pin = (led_strip_index == 0) ? PIN_LED_EXT_CTRL_1 : PIN_LED_EXT_CTRL_2;
     
     if (channel == LedChannel::Internal) {
-        digitalWrite(int_pin, LOW);
-    } else { 
         digitalWrite(int_pin, HIGH);
+    } else { 
+        digitalWrite(int_pin, LOW);
     }
 }
 
