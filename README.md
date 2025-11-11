@@ -23,7 +23,8 @@ If you find waku-ctl useful, please consider supporting its development through 
     *   Configure step up/down duration for smooth fan speed transitions.
     *   Option to halt the PC on alarm conditions.
 *   **Temperature Monitoring:**
-    *   Supports two temperature sensors.
+    *   Supports three temperature sensors.
+    *   Possibility to use deltas between sensors
     *   Display temperatures in Celsius or Fahrenheit.
 *   **ARGB Lighting Control:**
     *   Control two separate ARGB headers.
@@ -68,28 +69,10 @@ The firmware is developed using Visual Studio Code with the PlatformIO extension
 2.  Enter `usb-cdc-daemon` folder and run `go build .`
 3.  Execute the binary and check HWInfo64, you should start getting telemetry
 
-## Hardware
-
-The hardware is based on an ESP32-S3 N16R8 development board or a board with a similar pinout.
-
-### Main components
-
-| Designator                                    | Quantity | Manufacturer                | Part Number   |
-| --------------------------------------------- | -------- | --------------------------- | -------------------------- |
-| Analog to Digital Converter                   | 1        | Texas Instruments           | ADS1115IDGSR               |
-| Multiplexer                                   | 1        | Texas Instruments           | CD4053BPWR                 |
-| 100nF Capacitors                              | 7        | Samsung Electro-Mechanics   | CL31B104KBCNNNC            |
-| 8 channel Voltage Level Shiter                | 1        | Texas Instruments           | TXS0108EPWR                |
-| 2 channel Voltage Level Shiter                | 1        | Texas Instruments           | TXS0102DCTT                |
-| 10k Resistors                                 | 8        | UNI-ROYAL(Uniroyal Elec)    | 1206W4F1002T5E             |
-| Schmitt Trigger                               | 1        | HTC Korea TAEJIN Tech       | 74HC14D                    |
-| Reset Button                                  | 1        | Omron                       | B3FS-1000P                 |
-| Passive Speaker/Buzzer                        | 1        | XHXDZ                       | HC9042-16                  |
-| Phototransistor SMD-4P Transistor             | 1        | Renesas                     | PS2701A-1-F3-A             |
-
 ### PCB layout
 
-![waku-ctl banner](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcbs.png)
+![waku-ctl pcb top](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcb-top.png)
+![waku-ctl pcb bottom](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcb-bottom.png)
 
 ## UI
 
