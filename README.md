@@ -71,8 +71,7 @@ The firmware is developed using Visual Studio Code with the PlatformIO extension
 
 ### PCB layout
 
-![waku-ctl pcb top](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcb-top.png)
-![waku-ctl pcb bottom](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcb-bottom.png)
+![waku-ctl pcb](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcbs.png)
 
 ## UI
 
