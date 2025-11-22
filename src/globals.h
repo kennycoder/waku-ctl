@@ -79,11 +79,21 @@ extern std::map<int, int> m_CurrentFanPwmValues;
 
 extern unsigned long lastTach;
 
-// Fan ISR Timestamps (MUST be volatile)
-extern volatile unsigned long fan0_TS1, fan0_TS2;
-extern volatile unsigned long fan1_TS1, fan1_TS2;
-extern volatile unsigned long fan2_TS1, fan2_TS2;
-extern volatile unsigned long fan3_TS1, fan3_TS2;
+// Fan ISR Pulse Counters (MUST be volatile)
+extern volatile unsigned long fan0_pulses;
+extern volatile unsigned long fan0_last_pulse_micros;
+extern volatile unsigned long fan1_pulses;
+extern volatile unsigned long fan1_last_pulse_micros;
+extern volatile unsigned long fan2_pulses;
+extern volatile unsigned long fan2_last_pulse_micros;
+extern volatile unsigned long fan3_pulses;
+extern volatile unsigned long fan3_last_pulse_micros;
+
+// Fan RPM Calculation Timestamps
+extern unsigned long fan0_last_calc_time;
+extern unsigned long fan1_last_calc_time;
+extern unsigned long fan2_last_calc_time;
+extern unsigned long fan3_last_calc_time;
 
 void init_globals();
 

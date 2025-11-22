@@ -1,6 +1,7 @@
 #include "globals.h"
 #include <esp_wifi.h> // Used for mpdu_rx_disable android workaround
 #include <TaskScheduler.h>
+#include <Ticker.h>
 #include "wifi_manager.h"
 #include "mqtt_manager.h"
 #include "peripherals_manager.h"
@@ -15,6 +16,7 @@ enum {
 Task *gSendTelemetryTask = nullptr;
 TaskHandle_t gProcessPIDControllerTaskHandle = NULL;
 Scheduler taskScheduler;
+Ticker tachTimer;
 
 // --- Function Prototypes ---
 
@@ -111,9 +113,9 @@ void InitializeTasks() {
     xTaskCreate(ProcessTemperatureCurvesTask, "ReadTemps", 4096, NULL, 5, NULL);
     xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
     xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 4, NULL);
+    xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4, NULL);
     xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
     xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
-    xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 2048, NULL, 1, NULL);
     xTaskCreate(PlayAlarmsTask, "PlayAlarms", 2048, NULL, tskIDLE_PRIORITY, NULL);
 
     InitializeMqttTelemetryTask(taskScheduler, gSendTelemetryTask);
@@ -283,9 +285,21 @@ void loop() {
             for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
                 for (int j = i + 1; j < ACTIVE_THERMISTORS; ++j) {
                     a_currentTemperatures[ACTIVE_THERMISTORS + k] = a_currentTemperatures[j] - a_currentTemperatures[i];
+                    if (
+                        abs(a_currentTemperatures[ACTIVE_THERMISTORS + k]) == a_currentTemperatures[j] || 
+                        abs(a_currentTemperatures[ACTIVE_THERMISTORS + k]) == a_currentTemperatures[i]
+                    ) {
+                        a_currentTemperatures[ACTIVE_THERMISTORS + k] = 0;
+                    }
                     // Serial.printf("Delta T%d_T%d: %.2f C\n", a_ThermistorIds[i]+1, a_ThermistorIds[j]+1, a_currentTemperatures[ACTIVE_THERMISTORS + k]);
                     k++;
                 }
+            }
+        }
+
+        if (ACTIVE_FANS > 0) {
+            for (int fan_id = 0; fan_id < ACTIVE_FANS; ++fan_id) {
+                a_CurrentFanSpeedsRpm[fan_id] = ReadFanRpm(fan_id);
             }
         }
 
@@ -300,14 +314,29 @@ void MonitorButtonTask(void *pvParameters) {
         // --- Monitor Reset Button ---
         if (digitalRead(PIN_RESET_SETTINGS) == LOW) {
             if (!b_ResetPressed) {
-                 b_ResetPressed = true;
-                 gHoldButtonCounter = millis();
-                 Serial.println("Reset button pressed.");
+                b_ResetPressed = true;
+                gHoldButtonCounter = millis();
+                Serial.println("Reset button pressed.");
             } else if (millis() - gHoldButtonCounter >= 5000) {
-                 Serial.println("Holding > 5s. Clearing preferences & rebooting!");
-                 ClearPreferences();
-                 delay(1000);
-                 esp_restart();
+                // If setup is completed, this button is used to do factory reset
+                if (systemSettings.setup_done) {
+                    Serial.println("Holding > 5s. Clearing preferences & rebooting!");
+                    ClearPreferences();
+                    delay(1000);
+                    esp_restart();
+                } else { // Otherwise it's a hack for quick setup
+                    systemSettings.offline_mode = true;
+                    systemSettings.ssid = "";
+                    systemSettings.password = "";
+                    systemSettings.hostname = "waku-ctl.local";
+                    systemSettings.setup_done = true;
+                    systemSettings.telemetry_interval = 30000;
+                    systemSettings.units = "C";                    
+                    b_ResetPressed = false;
+
+                    SaveConfig(systemSettings);
+                    RunPostSetup();
+                }
             }
         } else {
             if (b_ResetPressed) { // Button was pressed and now released
@@ -391,9 +420,6 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
         }
 
         for (int fan_id = 0; fan_id < ACTIVE_FANS; ++fan_id) {
-
-            // Main place where we read RPMs, needs refactoring to separate place though
-            a_CurrentFanSpeedsRpm[fan_id] = ReadFanRpm(fan_id); // Use index 'i' for ReadFanRpm
 
             if (m_SensorSettings[fan_id].mode == 1) { // Only run if in curve mode
                 continue; // Skip to next fan
@@ -543,36 +569,57 @@ void PlayLedsTask(void *pvParameters) {
     }
 }
 
+
+bool pinState = LOW;
+void IRAM_ATTR onTachTick() {
+  pinState = !pinState;
+  digitalWrite(PIN_TACH, pinState);
+}
+
 void GenerateTachSignalTask(void *pvParameters) {
+    bool is_timer_active = false;
+    unsigned long last_rpm = 0;
+
     while(true) {
         if (systemSettings.fan_passthrough >= 0 && systemSettings.fan_passthrough < ACTIVE_FANS) {
             unsigned long rpm = a_CurrentFanSpeedsRpm[systemSettings.fan_passthrough];
 
-            if (rpm > 0) {
-                // Tach signal is 2 pulses per revolution.
-                // Frequency (Hz) = RPM / 60 * 2 = RPM / 30
-                // Period (s) = 1 / Frequency = 30 / RPM
-                // Period (ms) = 30000 / RPM
-                // We need half period for high and half for low state.
-                unsigned long half_period_ms = 15000 / rpm;
-
-                if (half_period_ms > 0) {
-                    digitalWrite(PIN_TACH, HIGH);
-                    vTaskDelay(pdMS_TO_TICKS(half_period_ms));
-                    digitalWrite(PIN_TACH, LOW);
-                    vTaskDelay(pdMS_TO_TICKS(half_period_ms));
-                } else {
-                    digitalWrite(PIN_TACH, LOW);
-                    vTaskDelay(pdMS_TO_TICKS(100)); // RPM is high, but not high enough for 1ms delay, so we just wait
+            if (rpm <= 0) {
+                if (is_timer_active) {
+                    tachTimer.detach();
+                    is_timer_active = false;
+                    digitalWrite(PIN_TACH, HIGH); // Idle state
                 }
+                last_rpm = 0;
             } else {
-                digitalWrite(PIN_TACH, LOW);
-                vTaskDelay(pdMS_TO_TICKS(250)); // No RPM, wait before checking again.
+                // RPM is > 0. Check for significant change.
+                float difference = (last_rpm > 0) ? fabsf(1.0f - (float)rpm / last_rpm) : 1.0f;
+
+                if (difference > 0.05f) {
+                    // Frequency = (RPM * PPR) / 60. PPR is 2 for fans.
+                    // Interval (sec) = 1 / (Frequency * 2) for toggle ISR
+                    float frequency = (rpm * 2) / 60.0f;
+                    float intervalSec = 0.5f / frequency;
+
+                    if (is_timer_active) {
+                        tachTimer.detach();
+                    }
+                    tachTimer.attach(intervalSec, onTachTick);
+                    is_timer_active = true;
+                    last_rpm = rpm;
+                }
             }
         } else {
-            digitalWrite(PIN_TACH, LOW);
-            vTaskDelay(pdMS_TO_TICKS(250)); // Passthrough disabled
+            // Passthrough is disabled, ensure timer is off
+            if (is_timer_active) {
+                tachTimer.detach();
+                is_timer_active = false;
+                digitalWrite(PIN_TACH, HIGH);
+            }
+            last_rpm = 0;
         }
+
+        vTaskDelay(pdMS_TO_TICKS(500)); // Update frequency twice a second
     }
 }
 

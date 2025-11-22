@@ -1322,8 +1322,7 @@ UpdateToLatestRevision=1
 PartTypes=0
 
 [NetInfos]
-Net1=NetName=+3V3_REG|NetColor=$00FF6EFF
-Net2=NetName=+5_VBUS2|NetColor=$006EFF6E
+Net1=NetName=+5_VBUS2|NetColor=$006EFF6E
 
 [Comparison Options]
 ComparisonOptions0=Kind=Net|MinPercent=75|MinMatch=3|ShowMatch=0|UseName=-1|InclAllRules=0

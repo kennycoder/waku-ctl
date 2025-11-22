@@ -28,9 +28,7 @@ constexpr int ESP32_ANALOG_RESOLUTION = 4095;
 constexpr double ADC_VOLTAGE = 3.3;
 
 // --- Fan Control ---
-constexpr int FAN_DEBOUNCE_MS = 0; // Milliseconds
-constexpr int FAN_DEBOUNCE_MS_PUMP = 0; // Milliseconds
-constexpr int FAN_STUCK_THRESHOLD_MD = 500; // Milliseconds
+constexpr unsigned long FAN_DEBOUNCE_MICROS = 5000; // Microseconds
 constexpr int PWM_RESOLUTION_BITS = 8;
 constexpr int PWM_SIGNAL_FREQUENCY_HZ = 25000; // Hz
 constexpr int TACH_PWM_CHANNEL = 15;

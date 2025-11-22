@@ -61,7 +61,8 @@
               if (data.temps.hasOwnProperty(key)) {
                 const label = key.replace(/_/g, ' ');
                 const value = data.temps[key];
-                const displayValue = value > 0 ? (Math.round((value + Number.EPSILON) * 100) / 100) : "N/A";
+                const displayValue = Math.abs(value) > 0 ? (Math.round((value + Number.EPSILON) * 100) / 100) : "N/A";
+                // console.log(label + " --- " + value);
                 if (displayValue != "N/A") {
                   tempsContainer.append(`
                     <div class="data-item">

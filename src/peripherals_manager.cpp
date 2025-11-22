@@ -1,9 +1,46 @@
 #include "peripherals_manager.h"
 
-void IRAM_ATTR Fan0TachIsr() { unsigned long m = millis(); if ((m - fan0_TS2) > FAN_DEBOUNCE_MS_PUMP) { fan0_TS1 = fan0_TS2; fan0_TS2 = m; } }
-void IRAM_ATTR Fan1TachIsr() { unsigned long m = millis(); if ((m - fan1_TS2) > FAN_DEBOUNCE_MS) { fan1_TS1 = fan1_TS2; fan1_TS2 = m; } }
-void IRAM_ATTR Fan2TachIsr() { unsigned long m = millis(); if ((m - fan2_TS2) > FAN_DEBOUNCE_MS) { fan2_TS1 = fan2_TS2; fan2_TS2 = m; } }
-void IRAM_ATTR Fan3TachIsr() { unsigned long m = millis(); if ((m - fan3_TS2) > FAN_DEBOUNCE_MS) { fan3_TS1 = fan3_TS2; fan3_TS2 = m; } }
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+
+void IRAM_ATTR Fan0TachIsr() {
+    portENTER_CRITICAL_ISR(&timerMux);
+    unsigned long m = micros();
+    if ((m - fan0_last_pulse_micros) > FAN_DEBOUNCE_MICROS) {
+        fan0_pulses++;
+        fan0_last_pulse_micros = m;
+    }
+    portEXIT_CRITICAL_ISR(&timerMux);
+}
+
+void IRAM_ATTR Fan1TachIsr() {
+    portENTER_CRITICAL_ISR(&timerMux);
+    unsigned long m = micros();
+    if ((m - fan1_last_pulse_micros) > FAN_DEBOUNCE_MICROS) {
+        fan1_pulses++;
+        fan1_last_pulse_micros = m;
+    }
+    portEXIT_CRITICAL_ISR(&timerMux);
+}
+
+void IRAM_ATTR Fan2TachIsr() {
+    portENTER_CRITICAL_ISR(&timerMux);
+    unsigned long m = micros();
+    if ((m - fan2_last_pulse_micros) > FAN_DEBOUNCE_MICROS) {
+        fan2_pulses++;
+        fan2_last_pulse_micros = m;
+    }
+    portEXIT_CRITICAL_ISR(&timerMux);
+}
+
+void IRAM_ATTR Fan3TachIsr() {
+    portENTER_CRITICAL_ISR(&timerMux);
+    unsigned long m = micros();
+    if ((m - fan3_last_pulse_micros) > FAN_DEBOUNCE_MICROS) {
+        fan3_pulses++;
+        fan3_last_pulse_micros = m;
+    }
+    portEXIT_CRITICAL_ISR(&timerMux);
+}
 
 void InitializeAdc() {
     ads.setGain(GAIN_TWOTHIRDS);
@@ -67,7 +104,6 @@ void InitializeOutputs() {
     pinMode(PIN_LED_HEADER_2, OUTPUT);
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_PWR, OUTPUT);
-    pinMode(PIN_TACH, OUTPUT);
     digitalWrite(PIN_PWR, LOW);
 
     pinMode(PIN_LED_EXT_CTRL_1, OUTPUT);
@@ -87,6 +123,8 @@ void InitializeOutputs() {
         ledcWrite(pwm_pin, MapFanPercentToPwm(25));
     }    
 
+    pinMode(PIN_TACH, OUTPUT);
+
     Serial.println("Outputs configured.");
 }
 
@@ -99,7 +137,7 @@ void InitializeInputs() {
     for (int fan_id = 0; fan_id < ACTIVE_FANS; fan_id++) {
         uint8_t tach_pin = PIN_FAN_MAP[fan_id].tach_pin;
 
-        pinMode(tach_pin, INPUT_PULLDOWN);
+        pinMode(tach_pin, INPUT);
         Serial.printf("Setting pull-down on TACH %d (Pin %d)\n", fan_id, tach_pin);
 
         attachInterrupt(digitalPinToInterrupt(tach_pin), isr_functions[fan_id], RISING);
@@ -165,30 +203,32 @@ int MapValue(int value, int from_low, int from_high, int to_low, int to_high) {
 }
 
 unsigned long ReadFanRpm(int fan_index) {
-    volatile unsigned long *ts1 = nullptr, *ts2 = nullptr;
+    volatile unsigned long *pulses_ptr = nullptr;
+    unsigned long *last_calc_ptr = nullptr;
 
     switch (fan_index) {
-        case 0: ts1 = &fan0_TS1; ts2 = &fan0_TS2; break;
-        case 1: ts1 = &fan1_TS1; ts2 = &fan1_TS2; break;
-        case 2: ts1 = &fan2_TS1; ts2 = &fan2_TS2; break;
-        case 3: ts1 = &fan3_TS1; ts2 = &fan3_TS2; break;
+        case 0: pulses_ptr = &fan0_pulses; last_calc_ptr = &fan0_last_calc_time; break;
+        case 1: pulses_ptr = &fan1_pulses; last_calc_ptr = &fan1_last_calc_time; break;
+        case 2: pulses_ptr = &fan2_pulses; last_calc_ptr = &fan2_last_calc_time; break;
+        case 3: pulses_ptr = &fan3_pulses; last_calc_ptr = &fan3_last_calc_time; break;
         default: return 0;
     }
 
-    // Disable interrupts briefly to read volatile variables atomically
-    unsigned long current_millis = millis();
-    unsigned long t1_val, t2_val;
-    noInterrupts();
-    t1_val = *ts1;
-    t2_val = *ts2;
-    interrupts();
+    unsigned long current_time = millis();
+    unsigned long time_diff = current_time - *last_calc_ptr;
 
-    if ((current_millis - t2_val) < FAN_STUCK_THRESHOLD_MD && t2_val > t1_val) {
-        double delta_t = t2_val - t1_val;
-        double rpm = (60000.0 / delta_t) / 2.0; // /2 because 2 pulses per revolution
-        return (rpm > 0) ? static_cast<unsigned long>(rpm) : 0;
-    }
-    return 0; // Stuck or no reading
+    if (time_diff == 0) return 0;
+
+    portENTER_CRITICAL(&timerMux);
+    unsigned long count = *pulses_ptr;
+    *pulses_ptr = 0;
+    portEXIT_CRITICAL(&timerMux);
+
+    *last_calc_ptr = current_time;
+
+    // RPM = (count / 2) * (60000 / time_diff)
+    //     = (count * 30000) / time_diff
+    return (count * 30000) / time_diff;
 }
 
 int CalculateFanSpeed(int fan_id, float temperature) {

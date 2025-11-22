@@ -69,11 +69,21 @@ std::map<int, FanPinPair> PIN_FAN_MAP = {
 
 unsigned long lastTach = 0;
 
-// Fan ISR Timestamps
-volatile unsigned long fan0_TS1 = 0, fan0_TS2 = 0;
-volatile unsigned long fan1_TS1 = 0, fan1_TS2 = 0;
-volatile unsigned long fan2_TS1 = 0, fan2_TS2 = 0;
-volatile unsigned long fan3_TS1 = 0, fan3_TS2 = 0;
+// Fan ISR Pulse Counters
+volatile unsigned long fan0_pulses = 0;
+volatile unsigned long fan0_last_pulse_micros = 0;
+volatile unsigned long fan1_pulses = 0;
+volatile unsigned long fan1_last_pulse_micros = 0;
+volatile unsigned long fan2_pulses = 0;
+volatile unsigned long fan2_last_pulse_micros = 0;
+volatile unsigned long fan3_pulses = 0;
+volatile unsigned long fan3_last_pulse_micros = 0;
+
+// Fan RPM Calculation Timestamps
+unsigned long fan0_last_calc_time = 0;
+unsigned long fan1_last_calc_time = 0;
+unsigned long fan2_last_calc_time = 0;
+unsigned long fan3_last_calc_time = 0;
 
 void init_globals() {
     a_ThermistorIds.resize(ACTIVE_THERMISTORS);
