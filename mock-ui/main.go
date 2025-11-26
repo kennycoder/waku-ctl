@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"time"
 
@@ -110,10 +111,23 @@ func main() {
 	http.HandleFunc("/get-data", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
 		rnd := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
-		min := 10
-		max := 30
+		min := 30
+		max := 36
+		fmin := 1030
+		fmax := 1630
 
-		fmt.Fprintf(w, `{"units": "C", "client_id": "00:1b:63:84:45:e6", "local_timestamp": 946684800, "event": "manual_telemetry", "data": {"temperature1": %d, "temperature2": %d, "temperature3": %d, "FAN_PUMP": 128,"FAN_1": 128,"FAN_2": 128,"FAN_3": 128}}`, (rnd.Intn(max-min+1) + min), (rnd.Intn(max-min+1) + min), (rnd.Intn(max-min+1) + min))
+		v1 := (rnd.Intn(max-min+1) + min)
+		v2 := (rnd.Intn(max-min+1) + min)
+		v3 := (rnd.Intn(max-min+1) + min)
+		v4 := math.Abs(float64(v1 - v2))
+		v5 := math.Abs(float64(v1 - v3))
+		v6 := math.Abs(float64(v2 - v3))
+		v7 := (rnd.Intn(fmax-fmin+1) + fmin)
+		v8 := (rnd.Intn(fmax-fmin+1) + fmin)
+		v9 := (rnd.Intn(fmax-fmin+1) + fmin)
+		v10 := (rnd.Intn(fmax-fmin+1) + fmin)
+
+		fmt.Fprintf(w, `{"client_id":"14:38:EB:AE:3D:98","event":"manual_fetch","units":"C","data":{"temps":{"TEMP_1":%d,"TEMP_2":%d,"TEMP_3":%d,"DELTA_T1_T2":%.2f,"DELTA_T1_T3":%.2f,"DELTA_T2_T3":%.2f},"fans":{"FAN_PUMP":%d,"FAN_1":%d,"FAN_2":%d,"FAN_3":%d}}}`, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10)
 	})
 
 	log.Fatal(http.ListenAndServe("127.0.0.1:8081", nil))

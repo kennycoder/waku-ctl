@@ -1,16 +1,16 @@
 # waku-ctl - The open source water cooling controller.
 
-![waku-ctl banner](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/header.png)
+![waku-ctl banner](media/header.png)
 
 waku-ctl is an open-source water cooling controller designed to give you ultimate command over your custom water loop, freeing you from the limitations of BIOS profiles and proprietary software.
 
-This project contains the hardware and software for the Waku Control device.
+This project contains the hardware and software for the waku-ctl device.
 
 ## Support the Project
 
 If you find waku-ctl useful, please consider supporting its development through my Kickstarter campaign. Your support will help grow the project and bring new features to life!
 
-[**Support waku-ctl on Kickstarter!**](https://www.kickstarter.com/projects/nikolaidan/waku-ctl-the-open-source-water-cooling-controller/)
+[**Support waku-ctl on Kickstarter!**](https://www.kickstarter.com/projects/nikolaidan/waku-ctl-the-open-hardware-water-cooling-controller/)
 
 ## Features
 
@@ -71,7 +71,12 @@ The firmware is developed using Visual Studio Code with the PlatformIO extension
 
 ### PCB layout
 
-![waku-ctl pcb](https://raw.githubusercontent.com/kennycoder/waku-ctl/refs/heads/main/media/pcbs.png)
+![waku-ctl pcb](media/pcb.png)
+
+### PCB schematic
+
+![waku-ctl schematic](media/schematic.png)
+Also available in [PDF format](media/schematic.pdf).
 
 ## UI
 
