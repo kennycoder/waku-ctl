@@ -198,63 +198,19 @@ DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl.REP
 DItemRevisionGUID=
 
 [GeneratedDocument6]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Plane_1.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument7]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Signal_1.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument8]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Signal_Bot.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument9]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Copper_Signal_Top.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument10]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Drawing_1.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument11]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Drillmap_1.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument12]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Legend_Bot.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument13]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Legend_Top.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument14]
 DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_NPTH_Drill.gbr
 DItemRevisionGUID=
 
-[GeneratedDocument15]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Paste_Bot.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument16]
+[GeneratedDocument7]
 DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Paste_Top.gbr
 DItemRevisionGUID=
 
-[GeneratedDocument17]
+[GeneratedDocument8]
 DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Profile.gbr
 DItemRevisionGUID=
 
-[GeneratedDocument18]
+[GeneratedDocument9]
 DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_PTH_Drill.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument19]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Soldermask_Bot.gbr
-DItemRevisionGUID=
-
-[GeneratedDocument20]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Soldermask_Top.gbr
 DItemRevisionGUID=
 
 [Configuration1]

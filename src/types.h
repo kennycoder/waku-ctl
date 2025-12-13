@@ -51,8 +51,8 @@ struct TemperatureSensorSettings {
 };
 
 struct LedSettings {
-  uint8_t prev_mode = 1;
-  uint8_t mode = 1;
+  uint8_t prev_mode = -1;
+  uint8_t mode = 0;
   uint8_t speed = 100;
   uint8_t num_leds = 32;
   uint32_t start_color = 0x00FF00;

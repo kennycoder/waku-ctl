@@ -35,6 +35,7 @@ extern double a_currentTemperatures[ACTIVE_THERMISTORS_WITH_DELTAS];
 
 // System State
 extern unsigned long gHoldButtonCounter;
+extern bool b_TempAlarmStopped;
 extern bool b_TempAlarmFiring;
 extern bool b_RpmAlarmFiring;
 extern bool b_ResetPressed;

@@ -8,6 +8,7 @@ double a_currentTemperatures[ACTIVE_THERMISTORS_WITH_DELTAS];
 
 // System State
 unsigned long gHoldButtonCounter = 0;
+bool b_TempAlarmStopped = true;
 bool b_TempAlarmFiring = false;
 bool b_RpmAlarmFiring = false;
 bool b_ResetPressed = false;

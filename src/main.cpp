@@ -109,14 +109,14 @@ void SaveConfig(const Settings& s) {
 
 void InitializeTasks() {
 
-    xTaskCreate(MonitorStatesTask, "MonitorStates", 4096, NULL, 6, NULL);
-    xTaskCreate(ProcessTemperatureCurvesTask, "ReadTemps", 4096, NULL, 5, NULL);
-    xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
-    xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 4, NULL);
+    xTaskCreate(MonitorStatesTask, "MonitorStates", 4096, NULL, 8, NULL);
+    xTaskCreate(ProcessTemperatureCurvesTask, "ReadTemps", 4096, NULL, 7, NULL);
+    xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 6, &gProcessPIDControllerTaskHandle);
+    xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 5, NULL);
     xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4, NULL);
     xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
-    xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 2048, NULL, 2, NULL);
-    xTaskCreate(PlayAlarmsTask, "PlayAlarms", 2048, NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 4096, NULL, 2, NULL);
+    xTaskCreate(PlayAlarmsTask, "PlayAlarms", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
     InitializeMqttTelemetryTask(taskScheduler, gSendTelemetryTask);
     Serial.println("Tasks initialized.");
@@ -401,9 +401,13 @@ void PlayAlarmsTask(void *pvParameters) {
             // Play sound (Beep pattern)
             tone(PIN_BUZZER, b_TempAlarmFiring ? 1000 : 4000, 500);
             vTaskDelay(pdMS_TO_TICKS(1000));
+            b_TempAlarmStopped = false;
         } else {
-            noTone(PIN_BUZZER);
-            digitalWrite(PIN_PWR, LOW); // Stop cutting power, alarm turned off.
+            if (!b_TempAlarmStopped) {
+                noTone(PIN_BUZZER);
+                digitalWrite(PIN_PWR, LOW); // Stop cutting power (if cutting), alarm turned off.
+                b_TempAlarmStopped = true;
+            }
             vTaskDelay(pdMS_TO_TICKS(250));
         }
     }    
