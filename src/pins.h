@@ -8,7 +8,7 @@
 // --- System Pins ---
 constexpr uint8_t PIN_RESET_SETTINGS = 3;
 constexpr uint8_t PIN_BUZZER = 39;
-constexpr uint8_t PIN_PWR = 40; // Power control
+constexpr uint8_t PIN_PWR = 38; // Power control
 constexpr uint8_t PIN_TACH = 41; // Simulated tach input for motherboard header
 
 // --- I2C / Screen Pins ---
