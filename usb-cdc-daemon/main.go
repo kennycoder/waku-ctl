@@ -1135,9 +1135,7 @@ func sendCommand(cmd string) {
 
 func startTelemetryMonitor() {
 	var port serial.Port
-	var staleRetries int = 0
 
-OUTER:
 	for {
 		// Find the COM port
 		portName, err := findDeviceComPort(VID, PID)
@@ -1147,7 +1145,16 @@ OUTER:
 			continue
 		}
 
-		// Open the serial port
+		// Perform a dummy connection cycle to stabilize the driver/device
+		if dPort, err := serial.Open(portName, &serial.Mode{BaudRate: 115200}); err == nil {
+			dPort.SetDTR(true)
+			dPort.SetRTS(true)
+			time.Sleep(200 * time.Millisecond)
+			dPort.Close()
+			time.Sleep(200 * time.Millisecond)
+		}
+
+		// Open the serial port for real
 		port, err = serial.Open(portName, &serial.Mode{BaudRate: 115200, DataBits: 8, Parity: serial.NoParity, StopBits: 1})
 		if err != nil {
 			log.Printf("Error opening serial port %s: %v. Retrying in 5 seconds...", portName, err)
@@ -1161,6 +1168,15 @@ OUTER:
 
 		log.Printf("Successfully opened serial port %s", portName)
 		port.SetReadTimeout(ComPortTimeout)
+
+		// Set DTR and RTS high - required for many ESP32 CDC implementations
+		port.SetDTR(true)
+		port.SetRTS(true)
+
+		// Send initial commands to fetch current state
+		go func() {
+			time.Sleep(500 * time.Millisecond) // Give it a moment to stabilize
+		}()
 
 		reader := make([]byte, 4096)
 		var jsonBuffer []byte
@@ -1180,17 +1196,6 @@ OUTER:
 				}
 				log.Printf("Error reading from serial port %s: %v", portName, err)
 				time.Sleep(1 * time.Second)
-			}
-
-			if n == 0 {
-				staleRetries++
-				time.Sleep(100 * time.Millisecond)
-				if staleRetries >= 5 {
-					log.Printf("Retried %d times, closing port", staleRetries)
-					staleRetries = 0
-					port.Close()
-					continue OUTER
-				}
 			}
 
 			jsonBuffer = append(jsonBuffer, reader[:n]...)
@@ -1215,9 +1220,10 @@ OUTER:
 
 				openBrackets := 0
 				for i := startIndex; i < len(jsonBuffer); i++ {
-					if jsonBuffer[i] == '{' {
+					switch jsonBuffer[i] {
+					case '{':
 						openBrackets++
-					} else if jsonBuffer[i] == '}' {
+					case '}':
 						openBrackets--
 					}
 					if openBrackets == 0 && jsonBuffer[i] == '}' {
@@ -1230,7 +1236,6 @@ OUTER:
 					jsonStr := string(jsonBuffer[startIndex : endIndex+1])
 					go processTelemetry(jsonStr)
 					jsonBuffer = jsonBuffer[endIndex+1:]
-					staleRetries = 0
 				} else {
 					break
 				}
