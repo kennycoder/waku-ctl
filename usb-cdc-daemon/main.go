@@ -38,6 +38,9 @@ type TelemetryData struct {
 			Temperature1 float64 `json:"TEMP_1"`
 			Temperature2 float64 `json:"TEMP_2"`
 			Temperature3 float64 `json:"TEMP_3"`
+			DeltaTemp12  float64 `json:"DELTA_T1_T2"`
+			DeltaTemp13  float64 `json:"DELTA_T1_T3"`
+			DeltaTemp23  float64 `json:"DELTA_T2_T3"`
 		} `json:"temps"`
 		Fans struct {
 			FAN0 uint `json:"FAN_PUMP"`
@@ -133,6 +136,10 @@ var (
 	fanConfigs      map[string]FanConfig
 	fanConfigsMutex sync.Mutex
 
+	// Available Sensors from device
+	availableSensors      []string
+	availableSensorsMutex sync.Mutex
+
 	// UI Elements for Settings
 	ssidEntry         *widget.Entry
 	passwordEntry     *widget.Entry
@@ -162,13 +169,20 @@ var (
 		NumLedsLabel   *widget.Label
 	}
 
+	overlayText *widget.Label
+
 	mainWindow fyne.Window
+
+	connectionOverlay *fyne.Container
 
 	// Define sensor configurations
 	sensorInfos = []sensorRegistryInfo{
 		{"Temp0", "Temperature sensor 0", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.Temperature1) }},
 		{"Temp1", "Temperature sensor 1", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.Temperature2) }},
 		{"Temp2", "Temperature sensor 2", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.Temperature3) }},
+		{"DTemp12", "Temperature sensor delta 1-2", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.DeltaTemp12) }},
+		{"DTemp13", "Temperature sensor delta 1-3", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.DeltaTemp13) }},
+		{"DTemp23", "Temperature sensor delta 2-3", "°C", func(td TelemetryData) string { return fmt.Sprintf("%2.f", td.Data.Temps.DeltaTemp23) }},
 		{"Fan0", "Fan Pump Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN0) }},
 		{"Fan1", "Fan 1 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN1) }},
 		{"Fan2", "Fan 2 Speed", "RPM", func(td TelemetryData) string { return fmt.Sprintf("%d", td.Data.Fans.FAN2) }},
@@ -241,7 +255,19 @@ func main() {
 	split := container.NewHSplit(sidebarContainer, contentStack)
 	split.Offset = 0.2 // Initial split ratio
 
-	w.SetContent(split)
+	// Connection Error Overlay
+	overlayText = widget.NewLabelWithStyle("Establishing connection to waku-ctl, please wait...", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	overlayIcon := widget.NewIcon(theme.WarningIcon())
+	overlayContent := container.NewVBox(
+		layout.NewSpacer(),
+		container.NewCenter(container.NewVBox(overlayIcon, overlayText)),
+		layout.NewSpacer(),
+	)
+	overlayBg := canvas.NewRectangle(color.NRGBA{R: 0, G: 0, B: 0, A: 180})
+	connectionOverlay = container.NewStack(overlayBg, overlayContent)
+
+	mainStack := container.NewStack(split, connectionOverlay)
+	w.SetContent(mainStack)
 	w.Resize(fyne.NewSize(900, 600)) // Increased size for wider menu
 	w.SetFixedSize(true)             // Non-resizable
 
@@ -463,6 +489,14 @@ func saveSettings() {
 		dialog.ShowError(err, mainWindow)
 		return
 	}
+
+	settingsMutex.Lock()
+	currentSettings = s
+	settingsMutex.Unlock()
+
+	fyne.Do(func() {
+		UpdateCurvesUI()
+	})
 
 	sendCommand("save-settings " + string(payload))
 }
@@ -821,9 +855,22 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 	label := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	// Common Settings
-	tempSource := widget.NewSelect([]string{"Sensor 0", "Sensor 1"}, nil) // Will populate later
+	availableSensorsMutex.Lock()
+	opts := availableSensors
+	availableSensorsMutex.Unlock()
+	if len(opts) == 0 {
+		opts = []string{"Sensor 0", "Sensor 1", "Sensor 2"} // Default fallback
+	}
+	tempSource := widget.NewSelect(opts, nil)
 
-	tempAlarm := widget.NewSelect([]string{"No alarm", ">= 30°C", ">= 40°C", ">= 50°C", ">= 60°C", ">= 70°C", ">= 80°C", ">= 90°C"}, nil)
+	settingsMutex.Lock()
+	unit := currentSettings.Units
+	if unit == "" {
+		unit = "C"
+	}
+	settingsMutex.Unlock()
+
+	tempAlarm := widget.NewSelect([]string{"No alarm", ">= 30°" + unit, ">= 40°" + unit, ">= 50°" + unit, ">= 60°" + unit, ">= 70°" + unit, ">= 80°" + unit, ">= 90°" + unit}, nil)
 	fanAlarm := widget.NewSelect([]string{"No alarm", "< 100 RPM", "< 200 RPM", "< 300 RPM", "< 500 RPM"}, nil)
 
 	haltOn := widget.NewSelect([]string{"No halt", "Halt on fan speed alarm", "Halt on temperature alarm", "Halt on both"}, nil)
@@ -858,8 +905,16 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 	for i := 0; i < 5; i++ {
 		tLabel := widget.NewLabel(fmt.Sprintf("P%d Temp", i+1))
 		tSlider := widget.NewSlider(0, 100) // 0-100 C
-		tValLabel := widget.NewLabel("30°C")
-		tSlider.OnChanged = func(f float64) { tValLabel.SetText(fmt.Sprintf("%d°C", int(f))) }
+		tValLabel := widget.NewLabel("30°" + unit)
+		tSlider.OnChanged = func(f float64) {
+			settingsMutex.Lock()
+			u := currentSettings.Units
+			if u == "" {
+				u = "C"
+			}
+			settingsMutex.Unlock()
+			tValLabel.SetText(fmt.Sprintf("%d°%s", int(f), u))
+		}
 
 		fLabel := widget.NewLabel(fmt.Sprintf("P%d Fan", i+1))
 		fSlider := widget.NewSlider(0, 255) // 0-255 PWM
@@ -1037,21 +1092,53 @@ func UpdateCurvesUI() {
 			continue
 		}
 
+		settingsMutex.Lock()
+		unit := currentSettings.Units
+		if unit == "" {
+			unit = "C"
+		}
+		settingsMutex.Unlock()
+
 		log.Printf("UpdateCurvesUI: %s - sensor=%d, mode=%d", id, cfg.Sensor, cfg.Mode)
 
 		// Populate Common
 		if w.TempSourceSelect != nil {
+			availableSensorsMutex.Lock()
+			if len(availableSensors) > 0 {
+				w.TempSourceSelect.Options = availableSensors
+			}
+			availableSensorsMutex.Unlock()
+
 			if cfg.Sensor >= 0 && cfg.Sensor < len(w.TempSourceSelect.Options) {
 				w.TempSourceSelect.SetSelectedIndex(cfg.Sensor)
 			}
+			w.TempSourceSelect.Refresh()
 		}
 
 		// Temp Alarm
 		if w.TempAlarmSelect != nil {
+			settingsMutex.Lock()
+			unit := currentSettings.Units
+			if unit == "" {
+				unit = "C"
+			}
+			settingsMutex.Unlock()
+
+			// Update options if unit changed
+			w.TempAlarmSelect.Options = []string{"No alarm",
+				fmt.Sprintf(">= 30°%s", unit),
+				fmt.Sprintf(">= 40°%s", unit),
+				fmt.Sprintf(">= 50°%s", unit),
+				fmt.Sprintf(">= 60°%s", unit),
+				fmt.Sprintf(">= 70°%s", unit),
+				fmt.Sprintf(">= 80°%s", unit),
+				fmt.Sprintf(">= 90°%s", unit),
+			}
+
 			if cfg.TempTh >= 999 {
 				w.TempAlarmSelect.SetSelected("No alarm")
 			} else {
-				w.TempAlarmSelect.SetSelected(fmt.Sprintf(">= %d°%s", cfg.TempTh, "C"))
+				w.TempAlarmSelect.SetSelected(fmt.Sprintf(">= %d°%s", cfg.TempTh, unit))
 			}
 		}
 
@@ -1113,6 +1200,9 @@ func UpdateCurvesUI() {
 			if i < len(w.CurvePoints) {
 				if w.CurvePoints[i].TempSlider != nil {
 					w.CurvePoints[i].TempSlider.SetValue(p.Temp)
+					if w.CurvePoints[i].TempLabel != nil {
+						w.CurvePoints[i].TempLabel.SetText(fmt.Sprintf("%d°%s", int(p.Temp), unit))
+					}
 				}
 				if w.CurvePoints[i].FanSlider != nil {
 					w.CurvePoints[i].FanSlider.SetValue(float64(p.Fan))
@@ -1138,28 +1228,40 @@ func sendCommand(cmd string) {
 
 func startTelemetryMonitor() {
 	var port serial.Port
+	var staleRetries int = 0
 
+OUTER:
 	for {
+		fyne.Do(func() {
+			if connectionOverlay != nil {
+				connectionOverlay.Show()
+				connectionOverlay.Refresh()
+			}
+		})
+
 		// Find the COM port
 		portName, err := findDeviceComPort(VID, PID)
 		if err != nil {
+			overlayText.SetText("Error finding device, please connect and try again")
+			connectionOverlay.Refresh()
 			log.Printf("Error finding device: %v. Retrying in 5 seconds...", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		// Perform a dummy connection cycle to stabilize the driver/device
-		if dPort, err := serial.Open(portName, &serial.Mode{BaudRate: 115200}); err == nil {
-			dPort.SetDTR(true)
-			dPort.SetRTS(true)
-			time.Sleep(200 * time.Millisecond)
-			dPort.Close()
-			time.Sleep(200 * time.Millisecond)
-		}
+		// // Perform a dummy connection cycle to stabilize the driver/device
+		// if dPort, err := serial.Open(portName, &serial.Mode{BaudRate: 115200, DataBits: 8, Parity: serial.NoParity, StopBits: 1}); err == nil {
+		// 	dPort.SetRTS(true)
+		// 	time.Sleep(200 * time.Millisecond)
+		// 	dPort.Close()
+		// 	time.Sleep(200 * time.Millisecond)
+		// }
 
 		// Open the serial port for real
 		port, err = serial.Open(portName, &serial.Mode{BaudRate: 115200, DataBits: 8, Parity: serial.NoParity, StopBits: 1})
 		if err != nil {
+			overlayText.SetText("Error opening serial port, please try again")
+			connectionOverlay.Refresh()
 			log.Printf("Error opening serial port %s: %v. Retrying in 5 seconds...", portName, err)
 			time.Sleep(5 * time.Second)
 			continue
@@ -1177,9 +1279,7 @@ func startTelemetryMonitor() {
 		port.SetRTS(true)
 
 		// Send initial commands to fetch current state
-		go func() {
-			time.Sleep(500 * time.Millisecond) // Give it a moment to stabilize
-		}()
+		// No commands here as requested
 
 		reader := make([]byte, 4096)
 		var jsonBuffer []byte
@@ -1187,6 +1287,13 @@ func startTelemetryMonitor() {
 		for {
 			n, err := port.Read(reader)
 			if err != nil {
+				fyne.Do(func() {
+					if connectionOverlay != nil {
+						connectionOverlay.Show()
+						connectionOverlay.Refresh()
+					}
+				})
+
 				if err.Error() == "The I/O operation has been aborted because of either a thread exit or an application request." {
 					log.Printf("Serial port %s disconnected. Attempting to reconnect...", portName)
 					port.Close()
@@ -1199,6 +1306,31 @@ func startTelemetryMonitor() {
 				}
 				log.Printf("Error reading from serial port %s: %v", portName, err)
 				time.Sleep(1 * time.Second)
+			}
+
+			if n > 0 {
+				fyne.Do(func() {
+					if connectionOverlay != nil {
+						connectionOverlay.Hide()
+						connectionOverlay.Refresh()
+					}
+				})
+				staleRetries = 0 // Reset stale retries on successful read
+			} else { // n == 0
+				staleRetries++
+				time.Sleep(100 * time.Millisecond)
+				if staleRetries >= 5 {
+					fyne.Do(func() {
+						if connectionOverlay != nil {
+							connectionOverlay.Show()
+							connectionOverlay.Refresh()
+						}
+					})
+					log.Printf("Re-connecting after %d retries", staleRetries)
+					staleRetries = 0
+					port.Close()
+					continue OUTER
+				}
 			}
 
 			jsonBuffer = append(jsonBuffer, reader[:n]...)
@@ -1239,6 +1371,7 @@ func startTelemetryMonitor() {
 					jsonStr := string(jsonBuffer[startIndex : endIndex+1])
 					go processTelemetry(jsonStr)
 					jsonBuffer = jsonBuffer[endIndex+1:]
+					staleRetries = 0
 				} else {
 					break
 				}
@@ -1278,7 +1411,8 @@ func processTelemetry(jsonStr string) {
 			if i < len(sensorData) {
 				val := sensor.getValue(telemetry)
 				unit := sensor.defaultUnit
-				if sensor.subKeyName == "Temp0" || sensor.subKeyName == "Temp1" {
+
+				if strings.Contains(sensor.subKeyName, "Temp") {
 					unit = getTempUnit(telemetry)
 				}
 
@@ -1355,21 +1489,42 @@ func processTelemetry(jsonStr string) {
 			}
 		}
 
-		// Try Settings
-		var settings Settings
-		err := json.Unmarshal([]byte(jsonStr), &settings)
-		if err == nil && (settings.SSID != "" || settings.Hostname != "") {
-			log.Printf("Received Settings for %s", settings.Hostname)
-			settingsMutex.Lock()
-			// Only update if it looks valid (e.g. Hostname or SSID is present, or just assume)
-			// Actually empty JSON "{}" unmarshals to empty struct without error.
-			// However `get-settings` returns full object.
-			currentSettings = settings
-			settingsMutex.Unlock()
+		if strings.Contains(jsonStr, `"ssid"`) {
+			// Try Settings
+			var settings Settings
+			if err := json.Unmarshal([]byte(jsonStr), &settings); err == nil {
+				log.Printf("Received Settings for %s", settings.Hostname)
+				settingsMutex.Lock()
+				// Only update if it looks valid (e.g. Hostname or SSID is present, or just assume)
+				// Actually empty JSON "{}" unmarshals to empty struct without error.
+				// However `get-settings` returns full object.
+				currentSettings = settings
+				settingsMutex.Unlock()
 
-			fyne.Do(func() {
-				UpdateSettingsUI()
-			})
+				fyne.Do(func() {
+					UpdateSettingsUI()
+				})
+			}
+		}
+
+		// Try Sensors list
+		if strings.Contains(jsonStr, `"sensors"`) {
+			var sensors SensorsResponse
+			if err := json.Unmarshal([]byte(jsonStr), &sensors); err == nil && len(sensors.Sensors) > 0 {
+				log.Printf("Received Sensors list: %v", sensors.Sensors)
+				availableSensorsMutex.Lock()
+				availableSensors = sensors.Sensors
+				availableSensorsMutex.Unlock()
+
+				fyne.Do(func() {
+					for _, w := range fanWidgets {
+						if w.TempSourceSelect != nil {
+							w.TempSourceSelect.Options = sensors.Sensors
+							w.TempSourceSelect.Refresh()
+						}
+					}
+				})
+			}
 		}
 	}
 }
