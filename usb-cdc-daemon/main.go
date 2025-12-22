@@ -14,7 +14,9 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"go.bug.st/serial"
 	"go.bug.st/serial/enumerator"
@@ -130,10 +132,8 @@ var (
 	rgbMutex    sync.Mutex
 
 	// Fans Settings
-	fanConfigs       map[string]FanConfig
-	fanConfigsMutex  sync.Mutex
-	availableSensors []string
-	sensorsMutex     sync.Mutex
+	fanConfigs      map[string]FanConfig
+	fanConfigsMutex sync.Mutex
 
 	// UI Elements for Settings
 	ssidEntry         *widget.Entry
@@ -186,8 +186,8 @@ func getTempUnit(td TelemetryData) string {
 }
 
 func main() {
-	a := app.New()
-	w := a.NewWindow("Waku Controller Telemetry")
+	a := app.NewWithID("com.kennyslabs.wakuctl")
+	w := a.NewWindow("Waku Controller")
 	mainWindow = w
 
 	// Initialize sensorData with empty values based on sensorInfos
@@ -199,21 +199,101 @@ func main() {
 		})
 	}
 
-	// Create Tabs
-	homeTab := container.NewTabItem("Home", makeHomeTab())
-	curvesTab := container.NewTabItem("Curves", makeCurvesTab())
-	rgbTab := container.NewTabItem("RGB", makeRgbTab())
-	settingsTab := container.NewTabItem("Settings", makeSettingsTab())
+	// Create Tabs Content
+	homeContent := makeHomeTab()
+	curvesContent := makeCurvesTab()
+	rgbContent := makeRgbTab()
+	settingsContent := makeSettingsTab()
 
-	tabs := container.NewAppTabs(homeTab, curvesTab, rgbTab, settingsTab)
-	tabs.SetTabLocation(container.TabLocationLeading)
+	contentStack := container.NewStack(homeContent)
 
-	w.SetContent(tabs)
-	w.Resize(fyne.NewSize(800, 600)) // Increased size for tabs
+	menuItems := []string{"Home", "Curves", "RGB", "Settings"}
+	menuList := widget.NewList(
+		func() int { return len(menuItems) },
+		func() fyne.CanvasObject { return widget.NewLabel("Menu Item") },
+		func(id widget.ListItemID, o fyne.CanvasObject) {
+			o.(*widget.Label).SetText(menuItems[id])
+		},
+	)
+	menuList.OnSelected = func(id widget.ListItemID) {
+		contentStack.Objects = []fyne.CanvasObject{}
+		switch id {
+		case 0:
+			contentStack.Add(homeContent)
+		case 1:
+			contentStack.Add(curvesContent)
+			sendCommand("get-sensors")
+			time.Sleep(100 * time.Millisecond)
+			sendCommand("get-curves")
+		case 2:
+			contentStack.Add(rgbContent)
+			sendCommand("get-rgb")
+		case 3:
+			contentStack.Add(settingsContent)
+			sendCommand("get-settings")
+		}
+		contentStack.Refresh()
+	}
+	menuList.Select(0)
+
+	// Sidebar with slightly wider width
+	sidebar := container.NewMax(menuList)
+	sidebarContainer := container.NewHBox(container.NewGridWrap(fyne.NewSize(150, 600), sidebar))
+
+	split := container.NewHSplit(sidebarContainer, contentStack)
+	split.Offset = 0.2 // Initial split ratio
+
+	w.SetContent(split)
+	w.Resize(fyne.NewSize(900, 600)) // Increased size for wider menu
+	w.SetFixedSize(true)             // Non-resizable
+
+	// Tray Menu
+	if desk, ok := a.(desktop.App); ok {
+		m := fyne.NewMenu("Waku Controller",
+			fyne.NewMenuItem("Open", func() {
+				w.Show()
+			}),
+			fyne.NewMenuItemSeparator(),
+			fyne.NewMenuItem("Quit", func() {
+				quitApp(a)
+			}),
+		)
+		desk.SetSystemTrayMenu(m)
+
+		// Tray Icon
+		iconPath := "tray.png" // Should be in the same directory as the executable or adjusted
+		if resource, err := fyne.LoadResourceFromPath(iconPath); err == nil {
+			desk.SetSystemTrayIcon(resource)
+		} else {
+			log.Printf("Failed to load tray icon %s: %v", iconPath, err)
+			// Fallback to app icon or theme icon if tray.png is missing
+			desk.SetSystemTrayIcon(theme.SettingsIcon())
+		}
+	}
+
+	// Intercept close to hide to tray
+	w.SetCloseIntercept(func() {
+		w.Hide()
+	})
 
 	go startTelemetryMonitor()
 
 	w.ShowAndRun()
+}
+
+func quitApp(a fyne.App) {
+	log.Println("Quitting application...")
+
+	// Close serial port
+	portMutex.Lock()
+	if globalPort != nil {
+		log.Println("Closing serial port...")
+		globalPort.Close()
+		globalPort = nil
+	}
+	portMutex.Unlock()
+
+	a.Quit()
 }
 
 func makeHomeTab() fyne.CanvasObject {
@@ -274,15 +354,11 @@ func makeRgbTab() fyne.CanvasObject {
 	led0 := makeRgbSection("LED_0", "ARGB Header #1")
 	led1 := makeRgbSection("LED_1", "ARGB Header #2")
 
-	refreshBtn := widget.NewButton("Refresh", func() {
-		sendCommand("get-rgb")
-	})
-
 	saveBtn := widget.NewButton("Save Colors", func() {
 		saveRgb()
 	})
 
-	return container.NewBorder(nil, container.NewHBox(refreshBtn, saveBtn), nil, nil, container.NewVScroll(container.NewVBox(led0, widget.NewSeparator(), led1)))
+	return container.NewBorder(nil, container.NewHBox(saveBtn), nil, nil, container.NewVScroll(container.NewVBox(led0, widget.NewSeparator(), led1)))
 }
 
 func makeSettingsTab() fyne.CanvasObject {
@@ -345,11 +421,7 @@ func makeSettingsTab() fyne.CanvasObject {
 		saveSettings()
 	})
 
-	refreshBtn := widget.NewButton("Refresh", func() {
-		sendCommand("get-settings")
-	})
-
-	return container.NewBorder(nil, container.NewHBox(refreshBtn, saveBtn), nil, nil, container.NewVScroll(form))
+	return container.NewBorder(nil, container.NewHBox(saveBtn), nil, nil, container.NewVScroll(form))
 }
 
 func saveSettings() {
@@ -729,17 +801,11 @@ func makeCurvesTab() fyne.CanvasObject {
 	fan2 := makeFanSection("FAN_2", "Fan Header #2")
 	fan3 := makeFanSection("FAN_3", "Fan Header #3")
 
-	refreshBtn := widget.NewButton("Refresh", func() {
-		sendCommand("get-sensors")
-		time.Sleep(100 * time.Millisecond) // Give time for sensors to arrive (not robust but simple)
-		sendCommand("get-curves")
-	})
-
 	saveBtn := widget.NewButton("Save Curves", func() {
 		saveCurves()
 	})
 
-	return container.NewBorder(nil, container.NewHBox(refreshBtn, saveBtn), nil, nil,
+	return container.NewBorder(nil, container.NewHBox(saveBtn), nil, nil,
 		container.NewVScroll(container.NewVBox(
 			fan0, widget.NewSeparator(),
 			fan1, widget.NewSeparator(),
@@ -1119,8 +1185,8 @@ OUTER:
 			if n == 0 {
 				staleRetries++
 				time.Sleep(100 * time.Millisecond)
-				if staleRetries > 10 {
-					log.Printf("Retrying %d", staleRetries)
+				if staleRetries >= 5 {
+					log.Printf("Retried %d times, closing port", staleRetries)
 					staleRetries = 0
 					port.Close()
 					continue OUTER
@@ -1249,32 +1315,6 @@ func processTelemetry(jsonStr string) {
 					})
 					return
 				}
-			}
-		}
-
-		// Try Sensors (List of sensors)
-		if strings.Contains(jsonStr, `"sensors"`) {
-			var sensResp SensorsResponse
-			if err := json.Unmarshal([]byte(jsonStr), &sensResp); err == nil && len(sensResp.Sensors) > 0 {
-				log.Printf("Received %d available sensors", len(sensResp.Sensors))
-				sensorsMutex.Lock()
-				availableSensors = sensResp.Sensors
-				sensorsMutex.Unlock()
-				// Update UI dropdowns
-				fyne.Do(func() {
-					fanConfigsMutex.Lock()
-					for id, w := range fanWidgets {
-						selIdx := w.TempSourceSelect.SelectedIndex()
-						w.TempSourceSelect.Options = sensResp.Sensors
-						w.TempSourceSelect.Refresh()
-						if selIdx >= 0 && selIdx < len(sensResp.Sensors) {
-							w.TempSourceSelect.SetSelectedIndex(selIdx)
-						}
-						log.Printf("Refreshed sensors for %s", id)
-					}
-					fanConfigsMutex.Unlock()
-				})
-				return
 			}
 		}
 
