@@ -47,6 +47,7 @@ void PlayAlarmsTask(void *pvParameters);
 
 // Telemetry
 std::string PrepareTelemetryPayload(const std::string& event = "default");
+String GenerateSensorsJson();
 
 // HTTP Server
 void HandleHttpNotFound(AsyncWebServerRequest *request);
@@ -477,7 +478,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                 }
                 if (m_CurrentFanPwmValues[fan_id] != target.current_rpm) {
                     ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.current_rpm);
-                    Serial.printf("FAN_%d: Setting PWM to %d (on PIN %d)\n", fan_id, target.current_rpm, PIN_FAN_MAP[fan_id].pwm_pin);
+                    Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, target.current_rpm);
                     m_CurrentFanPwmValues[fan_id] = target.current_rpm;
                 }
 
@@ -485,7 +486,7 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
                 // Ensure it stays at target if not adjusting
                 if (m_CurrentFanPwmValues[fan_id] != target.target_rpm) {
                     ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.target_rpm);
-                    Serial.printf("FAN_%d: Setting PWM to %d (on PIN %d)\n", fan_id, target.target_rpm, PIN_FAN_MAP[fan_id].pwm_pin);
+                    Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, target.target_rpm);
                     m_CurrentFanPwmValues[fan_id] = target.target_rpm;
                 }
             }
@@ -698,20 +699,260 @@ void DisplayDataTask(void *pvParameters) {
     }
 }
 
+void NativeUsbTelemetryTask(void *pvParameters);
+
+// --- Serial Command Helpers ---
+
+String GenerateFanCurvesJsonString() {
+    JsonDocument doc;
+    for (const auto& [key, value] : m_SensorSettings) {
+        String fkey = "FAN_" + String(key);
+        doc[fkey]["sensor"] = value.sensor_id;
+        doc[fkey]["temp_th"] = value.temperature_alarm_threshold;
+        doc[fkey]["duty_th"] = value.rpm_alarm_threshold;
+        doc[fkey]["sud_dur"] = value.step_duration_seconds;
+        doc[fkey]["halt_on"] = value.halt_on;
+        doc[fkey]["units"] = systemSettings.units;
+        doc[fkey]["mode"] = value.mode;
+        doc[fkey]["pid_kp"] = value.pid_kp;
+        doc[fkey]["pid_ki"] = value.pid_ki;
+        doc[fkey]["pid_kd"] = value.pid_kd;
+        doc[fkey]["pid_setpoint"] = value.pid_setpoint;
+        JsonArray curves = doc[fkey]["curves"].to<JsonArray>();
+        for (const auto& setting : value.fan_speed_curve) {
+            JsonObject point = curves.add<JsonObject>();
+            point["temp"] = setting.temperature_threshold;
+            point["fan"] = setting.fan_duty_cycle;
+        }
+    }
+    String buffer;
+    serializeJson(doc, buffer);
+    return buffer;
+}
+
+void SaveFanCurvesFromJson(const JsonVariant& json) {
+    JsonObject root = json.as<JsonObject>();
+    for (JsonPair kv : root) {
+        String fan_name = kv.key().c_str(); // FAN_X
+        int fan_id = fan_name.substring(4).toInt();
+        JsonVariant fan_data = kv.value();
+
+        if (m_SensorSettings.count(fan_id)) {
+             String settings_str;
+             serializeJson(fan_data, settings_str);
+             Serial.printf("Saving %s via Serial\n", fan_name.c_str());
+             systemPreferences.putString(fan_name.c_str(), settings_str);
+
+             m_SensorSettings[fan_id].sensor_id = fan_data["sensor"].as<int>();
+             m_SensorSettings[fan_id].temperature_alarm_threshold = fan_data["temp_th"].as<int>();
+             m_SensorSettings[fan_id].rpm_alarm_threshold = fan_data["duty_th"].as<int>();
+             m_SensorSettings[fan_id].step_duration_seconds = fan_data["sud_dur"].as<uint8_t>();
+             m_SensorSettings[fan_id].halt_on = fan_data["halt_on"].as<uint8_t>();
+             m_SensorSettings[fan_id].mode = fan_data["mode"].as<uint8_t>();
+             m_SensorSettings[fan_id].pid_kp = fan_data["pid_kp"].as<double>();
+             m_SensorSettings[fan_id].pid_ki = fan_data["pid_ki"].as<double>();
+             m_SensorSettings[fan_id].pid_kd = fan_data["pid_kd"].as<double>();
+             m_SensorSettings[fan_id].pid_setpoint = fan_data["pid_setpoint"].as<double>();
+             m_SensorSettings[fan_id].fan_speed_curve.clear();
+             for (const auto& setting : fan_data["curves"].as<JsonArray>()) {
+                 m_SensorSettings[fan_id].fan_speed_curve.push_back({setting["temp"].as<float>(), setting["fan"].as<int>()});
+             }
+        }
+    }
+    // Restart PID task
+    if (gProcessPIDControllerTaskHandle != NULL) {
+        vTaskDelete(gProcessPIDControllerTaskHandle);
+        gProcessPIDControllerTaskHandle = NULL;
+    }
+    xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL, 5, &gProcessPIDControllerTaskHandle);
+}
+
+String GenerateSettingsJsonString() {
+    JsonDocument doc;
+    doc["ssid"] = systemSettings.ssid;
+    doc["password"] = systemSettings.password;
+    doc["hostname"] = systemSettings.hostname;
+    doc["tel_itv"] = systemSettings.telemetry_interval;
+    doc["setup_done"] = systemSettings.setup_done;
+    doc["offline_mode"] = systemSettings.offline_mode;
+    doc["units"] = systemSettings.units;
+    doc["mqtt_broker"] = systemSettings.mqtt_broker;
+    doc["mqtt_topic"] = systemSettings.mqtt_topic;
+    doc["mqtt_enable"] = systemSettings.mqtt_enable;
+    doc["mqtt_username"] = systemSettings.mqtt_username;
+    doc["mqtt_password"] = systemSettings.mqtt_password;
+    doc["mqtt_port"] = systemSettings.mqtt_port;
+    doc["fan_passthrough"] = systemSettings.fan_passthrough;
+    String buffer;
+    serializeJson(doc, buffer);
+    return buffer;
+}
+
+void SaveSettingsFromJson(const JsonVariant& json) {
+    JsonObject root = json.as<JsonObject>();
+    
+    // Check for changes requiring reboot
+    bool needs_reboot = false;
+    if (root.containsKey("offline_mode")) {
+        bool new_offline = root["offline_mode"];
+        if (systemSettings.offline_mode != new_offline) needs_reboot = true;
+        systemSettings.offline_mode = new_offline;
+    }
+    
+    if (root.containsKey("ssid")) systemSettings.ssid = root["ssid"].as<String>();
+    if (root.containsKey("password")) systemSettings.password = root["password"].as<String>();
+    if (root.containsKey("hostname")) systemSettings.hostname = root["hostname"].as<String>();
+    systemSettings.setup_done = true;
+
+    if (root.containsKey("tel_itv")) systemSettings.telemetry_interval = root["tel_itv"];
+    if (root.containsKey("units")) systemSettings.units = root["units"].as<String>();
+    if (root.containsKey("mqtt_enable")) systemSettings.mqtt_enable = root["mqtt_enable"];
+    if (root.containsKey("mqtt_username")) systemSettings.mqtt_username = root["mqtt_username"].as<String>();
+    if (root.containsKey("mqtt_password")) systemSettings.mqtt_password = root["mqtt_password"].as<String>();
+    if (root.containsKey("mqtt_topic")) systemSettings.mqtt_topic = root["mqtt_topic"].as<String>();
+    if (root.containsKey("mqtt_broker")) systemSettings.mqtt_broker = root["mqtt_broker"].as<String>();
+    if (root.containsKey("mqtt_port")) systemSettings.mqtt_port = root["mqtt_port"];
+    if (root.containsKey("fan_passthrough")) systemSettings.fan_passthrough = root["fan_passthrough"];
+
+    SaveConfig(systemSettings);
+    
+    if (needs_reboot || (root.containsKey("force_reboot") && root["force_reboot"].as<bool>())) {
+        Serial.println("Settings saved via Serial, rebooting...");
+        delay(500);
+        esp_restart();
+    }
+}
+
+String GenerateRgbJsonString() {
+    JsonDocument doc;
+    for (const auto& [key, value] : m_LedSettings) {
+        String fkey = "LED_" + String(key);
+        doc[fkey]["mode"] = value.mode;
+        doc[fkey]["speed"] = value.speed;
+        doc[fkey]["start_color"] = value.start_color;
+        doc[fkey]["end_color"] = value.end_color;
+        doc[fkey]["num_leds"] = value.num_leds;
+    }
+    String buffer;
+    serializeJson(doc, buffer);
+    return buffer;    
+}
+
+void SaveRgbFromJson(const JsonVariant& json) {
+    JsonObject root = json.as<JsonObject>();
+    for (JsonPair kv : root) {
+        String led_name = kv.key().c_str(); // LED_X
+        int led_index = led_name.substring(4).toInt();
+        JsonVariant led_data = kv.value();
+
+        if (m_LedSettings.count(led_index)) {
+             String led_str;
+             serializeJson(led_data, led_str);
+             Serial.printf("Saving %s via Serial\n", led_name.c_str());
+             systemPreferences.putString(led_name.c_str(), led_str);
+             
+             m_LedSettings[led_index].prev_mode =  m_LedSettings[led_index].mode;
+             m_LedSettings[led_index].mode = led_data["mode"];
+             m_LedSettings[led_index].speed = led_data["speed"];
+             m_LedSettings[led_index].start_color = led_data["start_color"];
+             m_LedSettings[led_index].end_color = led_data["end_color"];
+             m_LedSettings[led_index].num_leds = led_data["num_leds"];
+        }
+    }
+}
+
 void NativeUsbTelemetryTask(void *pvParameters) {
-    TickType_t last_wake_time = xTaskGetTickCount();
-    const TickType_t frequency = pdMS_TO_TICKS(1000); // Send every 1 second
+    unsigned long last_telemetry_time = 0;
+    const unsigned long telemetry_interval = 1000; // Send every 1 second by default
+
+    // Buffer for incoming serial data
+    String serialBuffer = "";
 
     while (true) {
         if (USBTelemetryPort) {
-            std::string payload = PrepareTelemetryPayload("usb_stream");
-            size_t sent_bytes = USBTelemetryPort.println(payload.c_str());
-            if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-                Serial.printf("USB: Sent %d bytes.\n", sent_bytes);
+            // 1. Handle Incoming Commands
+            while (USBTelemetryPort.available()) {
+                char c = USBTelemetryPort.read();
+
+                if (c == '\n') {
+                    // Process command
+                    serialBuffer.trim();
+                    if (serialBuffer.length() > 0) {
+                        int spaceIdx = serialBuffer.indexOf(' ');
+                        String command = (spaceIdx > 0) ? serialBuffer.substring(0, spaceIdx) : serialBuffer;
+                        String payload = (spaceIdx > 0) ? serialBuffer.substring(spaceIdx + 1) : "{}";
+                        
+                        // Parse JSON payload if any
+                        JsonDocument doc;
+                        DeserializationError error = deserializeJson(doc, payload);
+                        
+                        Serial.printf("Command: %s, Payload: %s\n", command.c_str(), payload.c_str());
+
+                        if (command == "get-sensors") {
+                            USBTelemetryPort.println(GenerateSensorsJson());
+                        } else if (command == "get-data") {
+                            USBTelemetryPort.println(PrepareTelemetryPayload("manual_fetch").c_str());
+                        } else if (command == "get-curves") {
+                            USBTelemetryPort.println(GenerateFanCurvesJsonString());
+                        } else if (command == "save-curves") {
+                            if (!error) {
+                                SaveFanCurvesFromJson(doc);
+                                USBTelemetryPort.println("{\"status\": \"curves_saved\"}");
+                            } else {
+                                USBTelemetryPort.println("{\"error\": \"invalid_json\"}");
+                            }
+                        } else if (command == "get-settings") {
+                            USBTelemetryPort.println(GenerateSettingsJsonString());
+                        } else if (command == "save-settings") {
+                            if (!error) {
+                                USBTelemetryPort.println("{\"status\": \"settings_saved\"}");
+                                SaveSettingsFromJson(doc);
+                                // Note: Reboot might happen in function
+                            } else {
+                                USBTelemetryPort.println("{\"error\": \"invalid_json\"}");
+                            }
+                        } else if (command == "clear-settings") {
+                             ClearPreferences();
+                             USBTelemetryPort.println("{\"status\": \"cleared_restarting\"}");
+                             delay(500);
+                             esp_restart();
+                        } else if (command == "get-rgb") {
+                            USBTelemetryPort.println(GenerateRgbJsonString());
+                        } else if (command == "save-rgb") {
+                            if (!error) {
+                                SaveRgbFromJson(doc);
+                                USBTelemetryPort.println("{\"status\": \"rgb_saved\"}");
+                            } else {
+                                USBTelemetryPort.println("{\"error\": \"invalid_json\"}");
+                            }
+                        } else if (command == "networks") {
+                             JsonDocument netDoc;
+                             ScanWifiNetworks(netDoc);
+                             String netBuf;
+                             serializeJson(netDoc, netBuf);
+                             USBTelemetryPort.println(netBuf);
+                        } else {
+                             USBTelemetryPort.println("{\"error\": \"unknown_command\"}");
+                        }
+                    }
+                    serialBuffer = "";
+                } else {
+                   serialBuffer += c;
+                }
+            }
+
+            // 2. Handle Periodic Telemetry
+            unsigned long now = millis();
+            if (now - last_telemetry_time >= telemetry_interval) {
+                last_telemetry_time = now;
+                 std::string payload = PrepareTelemetryPayload("usb_stream");
+                 
+                 // Serial.printf("USB Telemetry: %s\n", payload.c_str());
+                 USBTelemetryPort.println(payload.c_str());
             }
         }
-
-        vTaskDelayUntil(&last_wake_time, frequency);
+        
+        vTaskDelay(pdMS_TO_TICKS(10)); // Check for serial input often
     }
 }
 
@@ -762,6 +1003,32 @@ std::string PrepareTelemetryPayload(const std::string& event) {
     String buffer;
     serializeJson(payload, buffer);
     return buffer.c_str();
+}
+
+String GenerateSensorsJson() {
+    JsonDocument doc;        
+    String buffer;
+    
+    for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+        int f_idx = a_ThermistorIds[i];
+        String f_key = "TEMP_" + String(f_idx+1);
+        doc["sensors"][f_idx] = f_key;
+    }
+
+    // add deltas for each sensor combination if more than 1 sensor and only unique combinations, e.g. T1-T2, T1-T3, T2-T3
+    if (ACTIVE_THERMISTORS > 1) {
+        int k = 0;
+        for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
+            for (int j = i + 1; j < ACTIVE_THERMISTORS; ++j) {
+                String f_key = "DELTA_T" + String(a_ThermistorIds[i]+1) + "_T" + String(a_ThermistorIds[j]+1);
+                doc["sensors"][ACTIVE_THERMISTORS + k] = f_key;
+                k++;
+            }
+        }
+    }
+
+    serializeJson(doc, buffer);
+    return buffer;
 }
 
 // --- HTTP Server ---
@@ -847,7 +1114,7 @@ void InitializeHttpServer() {
             doc[fkey]["num_leds"] = value.num_leds;
         }
         String buffer;
-        serializeJsonPretty(doc, buffer);
+        serializeJson(doc, buffer);
         request->send(200, "application/json", buffer);
     });
 
@@ -887,30 +1154,9 @@ void InitializeHttpServer() {
         request->send(200, "application/json", buffer);
     });
 
-    // API: Scan WiFi Networks
+    // API: Get Sensors
     webServer.on("/get-sensors", HTTP_GET, [](AsyncWebServerRequest *request) {
-        JsonDocument doc;        
-        String buffer;
-        
-        for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
-            int f_idx = a_ThermistorIds[i];
-            String f_key = "TEMP_" + String(f_idx+1);
-            doc[f_idx] = f_key;
-        }
-
-        // add deltas for each sensor combination if more than 1 sensor and only unique combinations, e.g. T1-T2, T1-T3, T2-T3
-        if (ACTIVE_THERMISTORS > 1) {
-            int k = 0;
-            for (int i = 0; i < ACTIVE_THERMISTORS; ++i) {
-                for (int j = i + 1; j < ACTIVE_THERMISTORS; ++j) {
-                    String f_key = "DELTA_T" + String(a_ThermistorIds[i]+1) + "_T" + String(a_ThermistorIds[j]+1);
-                    doc[ACTIVE_THERMISTORS + k] = f_key;
-                    k++;
-                }
-            }
-        }
-
-        serializeJson(doc, buffer);
+        String buffer = GenerateSensorsJson();
         request->send(200, "application/json", buffer);
     });
 
@@ -1009,7 +1255,7 @@ void InitializeHttpServer() {
             }
         }
         String buffer;
-        serializeJsonPretty(doc, buffer);
+        serializeJson(doc, buffer);
         request->send(200, "application/json", buffer);
     });
 

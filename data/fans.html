@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>WaKu-ctl - Fans & Temperatures configuration</title>
-<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
-<script src="/all-jquery-deps.min.js"></script>
-<meta charset="utf-8">
-<link rel="stylesheet" href="/styles.css">
+  <title>WaKu-ctl - Fans & Temperatures configuration</title>
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  <script src="/all-jquery-deps.min.js"></script>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <style>
   .tab-content {
@@ -13,11 +14,13 @@
     height: 0;
     overflow: hidden;
   }
+
   .tab-content.active {
     visibility: visible;
     height: auto;
     overflow: auto;
   }
+
   .tabs ul {
     list-style-type: none;
     margin: 0;
@@ -25,6 +28,7 @@
     display: flex;
     border-bottom: 1px solid #ccc;
   }
+
   .tabs ul li a {
     display: block;
     padding: 10px 15px;
@@ -34,6 +38,7 @@
     border-bottom: none;
     cursor: pointer;
   }
+
   .tabs ul li a.active {
     background-color: #fff;
     border-color: #ccc;
@@ -41,6 +46,7 @@
     margin-bottom: -1px;
   }
 </style>
+
 <body>
 
   <div class="sidebar">
@@ -68,25 +74,25 @@
         <input type="hidden" id="FAN_2" name="FAN_2" value="{}">
         <input type="hidden" id="FAN_3" name="FAN_3" value="{}">
       </form>
-      
+
       <script>
         var fan_data = [];
         var available_sensors = [];
         var units = "C";
 
-        $(document).ready(function() {
+        $(document).ready(function () {
           $.ajax({
             url: '/get-sensors',
             type: 'GET',
             dataType: 'json',
-            success: function(sensors) {
-              available_sensors = sensors;
-              
+            success: function (sensors) {
+              available_sensors = sensors["sensors"];
+
               $.ajax({
                 url: '/get-curves',
                 type: 'GET',
                 dataType: 'json',
-                success: function(data) {
+                success: function (data) {
                   fan_data = data;
                   // update data object with fetched data
                   for (const key in fan_data) {
@@ -98,7 +104,7 @@
                       });
                     }
                   }
-          
+
                   for (const key in fan_data) {
                     createChart(key, fan_data[key]);
                   }
@@ -107,9 +113,9 @@
             }
           });
 
-          $('#fan-curves').submit(function(event) {
+          $('#fan-curves').submit(function (event) {
             event.preventDefault(); // Prevent default form submission
-      
+
             fan_data['FAN_0']['sensor'] = $('#sensor_id-FAN_0').val();
             fan_data['FAN_1']['sensor'] = $('#sensor_id-FAN_1').val();
             fan_data['FAN_2']['sensor'] = $('#sensor_id-FAN_2').val();
@@ -164,31 +170,31 @@
             fan_data['FAN_1']['pid_kd'] = $('#pid_kd-FAN_1').val();
             fan_data['FAN_2']['pid_kd'] = $('#pid_kd-FAN_2').val();
             fan_data['FAN_3']['pid_kd'] = $('#pid_kd-FAN_3').val();
-            
+
             fan_data['FAN_0']['pid_ki'] = $('#pid_ki-FAN_0').val();
             fan_data['FAN_1']['pid_ki'] = $('#pid_ki-FAN_1').val();
             fan_data['FAN_2']['pid_ki'] = $('#pid_ki-FAN_2').val();
             fan_data['FAN_3']['pid_ki'] = $('#pid_ki-FAN_3').val();
-            
+
             fan_data['FAN_0']['pid_setpoint'] = $('#pid_setpoint-FAN_0').val();
             fan_data['FAN_1']['pid_setpoint'] = $('#pid_setpoint-FAN_1').val();
             fan_data['FAN_2']['pid_setpoint'] = $('#pid_setpoint-FAN_2').val();
-            fan_data['FAN_3']['pid_setpoint'] = $('#pid_setpoint-FAN_3').val();            
+            fan_data['FAN_3']['pid_setpoint'] = $('#pid_setpoint-FAN_3').val();
 
             $('#FAN_0').val(JSON.stringify(fan_data["FAN_0"]));
             $('#FAN_1').val(JSON.stringify(fan_data["FAN_1"]));
             $('#FAN_2').val(JSON.stringify(fan_data["FAN_2"]));
             $('#FAN_3').val(JSON.stringify(fan_data["FAN_3"]));
-      
+
             $.ajax({
               url: '/save-curves',
               type: 'POST',
               data: $(this).serialize(),
-              success: function(response) {
+              success: function (response) {
                 // Handle successful setup (e.g., display a success message)
                 alert('Fans & Temperatures saved successfully!');
               },
-              error: function(error) {
+              error: function (error) {
                 // Handle setup errors (e.g., display an error message)
                 alert('Fans & Temperatures saving failed: ' + error.responseText);
               }
@@ -196,7 +202,7 @@
             return false; // Prevent default form submission
           });
         });
-      
+
         function createChart(key, fanData) {
           const data = fanData['curves'];
           const active_sensor = fanData['sensor'];
@@ -220,26 +226,26 @@
           const tabsContainer = $(`
             <div id="tabs-${key}" class="tabs">
               <ul>
-                <li><a href="#tab-curve-${key}" class="` + (mode == 0 ? 'active' :  '') + `">Temperature Curve (${fanLabelOverride})</a></li>
-                <li><a href="#tab-pid-${key}" class="`+ (mode == 1 ? 'active' :  '') +`">PID Control (FAN_${fanLabelOverride})</a></li>
+                <li><a href="#tab-curve-${key}" class="` + (mode == 0 ? 'active' : '') + `">Temperature Curve (${fanLabelOverride})</a></li>
+                <li><a href="#tab-pid-${key}" class="` + (mode == 1 ? 'active' : '') + `">PID Control (FAN_${fanLabelOverride})</a></li>
               </ul>
-              <div id="tab-curve-${key}" class="tab-content ` + (mode == 0 ? 'active' :  '') + `"></div>
-              <div id="tab-pid-${key}" class="tab-content ` + (mode == 1 ? 'active' :  '') + `"></div>
+              <div id="tab-curve-${key}" class="tab-content ` + (mode == 0 ? 'active' : '') + `"></div>
+              <div id="tab-pid-${key}" class="tab-content ` + (mode == 1 ? 'active' : '') + `"></div>
             </div>
           `);
           fan_data[key]['mode'] = mode;
           fanContainer.append(tabsContainer);
 
           // Custom tab logic
-          $(`#tabs-${key} ul li a`).on('click', function(e) {
+          $(`#tabs-${key} ul li a`).on('click', function (e) {
             e.preventDefault();
             var target = $(this).attr('href');
             fan_data[key]['mode'] = (target.includes('curve')) ? 0 : 1;
-            
+
             // Handle nav
             $(`#tabs-${key} ul li a`).removeClass('active');
             $(this).addClass('active');
-            
+
             // Handle content
             $(`#tabs-${key} .tab-content`).removeClass('active');
             $(target).addClass('active');
@@ -248,58 +254,58 @@
           const controlsContainer = $('<div>').addClass('chart-controls-container form-grid').attr('id', `chart-controls-${key}`);
           const chartContainer = $('<div>').addClass('chart-container').attr('id', `chart-${key}`);
           chartContainer.append(`<h3 style="position: absolute; opacity: 30%; margin-inline: auto; width: fit-content; left:0; right:0; top: 50%; transform: translateY(-50%); user-select: none;">${fanLabelOverride}</h3>`);
-          
+
           const svg = $(`<svg width="100%" height="100%"></svg>`).attr('id', `svg-${key}`).appendTo(chartContainer);
 
           const temp_src_select_label = $(`<label for="sensor_id-${key}">Temperature source:</label>`);
           const temp_src_select = $(`<select style="bottom: 10px; right: 10px;"></select>`).attr('id', `sensor_id-${key}`)
           for (const [idx, t_sensor] of available_sensors.entries()) {
-            temp_src_select.append($('<option>', { 
+            temp_src_select.append($('<option>', {
               value: idx,
-              text : t_sensor,
+              text: t_sensor,
               selected: active_sensor == idx
             }));
-          } 
+          }
           temp_src_select_label.appendTo(controlsContainer);
           temp_src_select.appendTo(controlsContainer);
-          
+
           const rpm_select_label = $(`<label for="duty_th-${key}">Fan RPM alarm:</label>`);
           const rpm_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `duty_th-${key}`);
-          rpm_select.append($('<option>', { value: -1, text : 'No alarm', selected: active_duty_th == -1 }));
-          for (_r = 100; _r <= 300; _r+=50) {
-            rpm_select.append($('<option>', { value: _r, text : '< ' + _r + ' RPM', selected: active_duty_th == _r }));
+          rpm_select.append($('<option>', { value: -1, text: 'No alarm', selected: active_duty_th == -1 }));
+          for (_r = 100; _r <= 300; _r += 50) {
+            rpm_select.append($('<option>', { value: _r, text: '< ' + _r + ' RPM', selected: active_duty_th == _r }));
           }
           rpm_select_label.appendTo(controlsContainer);
           rpm_select.appendTo(controlsContainer);
 
           const temp_select_label = $(`<label for="temp_th-${key}">Temperature alarm:</label>`);
           const temp_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `temp_th-${key}`);
-          temp_select.append($('<option>', { value: 999, text : 'No alarm', selected: active_temp_th == -1 }));
-          
-          for (_t = 30; _t <= 60; _t+=10) {
+          temp_select.append($('<option>', { value: 999, text: 'No alarm', selected: active_temp_th == -1 }));
+
+          for (_t = 30; _t <= 60; _t += 10) {
             if (units == "F") {
-              _tt = _t*1.8+32;
+              _tt = _t * 1.8 + 32;
             } else {
               _tt = _t;
             }
-            temp_select.append($('<option>', { value: _t, text : '>= ' + _tt + '°' + units, selected: active_temp_th == _t }));
+            temp_select.append($('<option>', { value: _t, text: '>= ' + _tt + '°' + units, selected: active_temp_th == _t }));
           }
           temp_select_label.appendTo(controlsContainer);
           temp_select.appendTo(controlsContainer);
 
           const halt_select_label = $(`<label for="halt_on-${key}">Halt PC on:</label>`);
           const halt_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `halt_on-${key}`);
-          halt_select.append($('<option>', { value: 0, text : 'No halt', selected: halt_on == 0 }));
-          halt_select.append($('<option>', { value: 1, text : 'Halt on fan speed alarm', selected: halt_on == 1 }));
-          halt_select.append($('<option>', { value: 2, text : 'Halt on temperature alarm', selected: halt_on == 2 }));
-          halt_select.append($('<option>', { value: 3, text : 'Halt on both', selected: halt_on == 3 }));
+          halt_select.append($('<option>', { value: 0, text: 'No halt', selected: halt_on == 0 }));
+          halt_select.append($('<option>', { value: 1, text: 'Halt on fan speed alarm', selected: halt_on == 1 }));
+          halt_select.append($('<option>', { value: 2, text: 'Halt on temperature alarm', selected: halt_on == 2 }));
+          halt_select.append($('<option>', { value: 3, text: 'Halt on both', selected: halt_on == 3 }));
           halt_select_label.appendTo(controlsContainer);
           halt_select.appendTo(controlsContainer);
 
           const stepupdown_select_label = $(`<label for="step-${key}">Step up/down duration:</label>`);
           const stepupdown_select = $(`<select style="bottom: 10px; right: 100px;"></select>`).attr('id', `step-${key}`);
-          for (_s = 1; _s <= 100; _s+=1) {
-            stepupdown_select.append($('<option>', { value: _s, text : _s + ' seconds', selected: active_sud_duration == _s }));
+          for (_s = 1; _s <= 100; _s += 1) {
+            stepupdown_select.append($('<option>', { value: _s, text: _s + ' seconds', selected: active_sud_duration == _s }));
           }
           stepupdown_select_label.appendTo(controlsContainer);
           stepupdown_select.appendTo(controlsContainer);
@@ -331,100 +337,100 @@
 
           for (let i = 0; i <= 10; i++) {
             // Vertical lines
-            var newLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+            var newLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             newLine.setAttribute('x1', i * svg.width() / 10);
             newLine.setAttribute('y1', '0');
             newLine.setAttribute('x2', i * svg.width() / 10);
             newLine.setAttribute('y2', svg.height());
             newLine.setAttribute("stroke", "#cccccc")
             svg.append(newLine);
-      
+
             // Horizontal lines
-            var newLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+            var newLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             newLine.setAttribute('x1', '0');
             newLine.setAttribute('y1', i * svg.height() / 10);
             newLine.setAttribute('x2', svg.width());
             newLine.setAttribute('y2', i * svg.height() / 10);
             newLine.setAttribute("stroke", "#cccccc")
             svg.append(newLine);
-      
+
             // Add text labels for vertical lines
-            var text = document.createElementNS('http://www.w3.org/2000/svg','text');
-            text.setAttribute('x', i * (svg.width() / 10)-2);
-            text.setAttribute('y', svg.height()-2);
+            var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', i * (svg.width() / 10) - 2);
+            text.setAttribute('y', svg.height() - 2);
             text.setAttribute('font-size', "8px");
             text.setAttribute('text-anchor', 'end');
             var x_val = i * 10;
-            if(units == "F") {
-              x_val = x_val*1.8+32;
+            if (units == "F") {
+              x_val = x_val * 1.8 + 32;
             }
             text.textContent = x_val + " °" + units;
             svg.append(text);
-      
+
             // Add text labels for horizontal lines
-            var text = document.createElementNS('http://www.w3.org/2000/svg','text');
+            var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             text.setAttribute('x', 2);
-            text.setAttribute('y', i * (svg.height() / 10)+8);
+            text.setAttribute('y', i * (svg.height() / 10) + 8);
             text.setAttribute('font-size', "8px");
             text.setAttribute('text-anchor', 'start');
-            var y_val = 100 - (i*10);
+            var y_val = 100 - (i * 10);
             text.textContent = y_val + '%';
             svg.append(text);
           }
-            
+
           // Find min/max values for scaling
           const tempMin = Math.min(...data.map(d => d.temp));
           const tempMax = Math.max(...data.map(d => d.temp));
           const fanMin = Math.min(...data.map(d => d.fan));
           const fanMax = Math.max(...data.map(d => d.fan));
-      
+
           // Function to scale data point to chart dimensions
           const scaleX = (temp) => (temp / 100) * chartContainer.width();
           const scaleY = (fan) => (fan / 255) * chartContainer.height();
           const unscaleX = (temp) => (temp / chartContainer.width()) * 100;
           const unscaleY = (fan) => (fan / chartContainer.height()) * 255;
-          
+
           // Create draggable dots
           data.forEach((point, index) => {
-            var newLine = document.createElementNS('http://www.w3.org/2000/svg','line');
-            newLine.setAttribute('id',`line-${key}-${index}`);
+            var newLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            newLine.setAttribute('id', `line-${key}-${index}`);
             newLine.setAttribute("stroke", "black")
-      
-            if(index == 0 && data.length != 1) {
-              newLine.setAttribute('x1','0');
-              newLine.setAttribute('y1',chartContainer.height());
+
+            if (index == 0 && data.length != 1) {
+              newLine.setAttribute('x1', '0');
+              newLine.setAttribute('y1', chartContainer.height());
               newLine.setAttribute('x2', scaleX(point.temp));
-              newLine.setAttribute('y2',chartContainer.height()-scaleY(point.fan));
+              newLine.setAttribute('y2', chartContainer.height() - scaleY(point.fan));
               newLine.setAttribute("stroke", "green")
-            } else if (index == data.length-1) {
-              newLine.setAttribute('x1', scaleX(data[index-1].temp));
-              newLine.setAttribute('y1',chartContainer.height()-scaleY(data[index-1].fan));
+            } else if (index == data.length - 1) {
+              newLine.setAttribute('x1', scaleX(data[index - 1].temp));
+              newLine.setAttribute('y1', chartContainer.height() - scaleY(data[index - 1].fan));
               newLine.setAttribute('x2', scaleX(point.temp));
-              newLine.setAttribute('y2',chartContainer.height()-scaleY(point.fan));
-      
+              newLine.setAttribute('y2', chartContainer.height() - scaleY(point.fan));
+
             } else {
-              newLine.setAttribute('x1', scaleX(data[index-1].temp));
-              newLine.setAttribute('y1',chartContainer.height()-scaleY(data[index-1].fan));
+              newLine.setAttribute('x1', scaleX(data[index - 1].temp));
+              newLine.setAttribute('y1', chartContainer.height() - scaleY(data[index - 1].fan));
               newLine.setAttribute('x2', scaleX(point.temp));
-              newLine.setAttribute('y2',chartContainer.height()-scaleY(point.fan));
+              newLine.setAttribute('y2', chartContainer.height() - scaleY(point.fan));
             }
-      
+
             svg.append(newLine);
-      
+
             // add final line
-      
-            if (index == data.length-1) {
-              var fLine = document.createElementNS('http://www.w3.org/2000/svg','line');
-              fLine.setAttribute('id',`line-${key}-f`);
+
+            if (index == data.length - 1) {
+              var fLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+              fLine.setAttribute('id', `line-${key}-f`);
               fLine.setAttribute('x1', scaleX(data[index].temp));
-              fLine.setAttribute('y1',chartContainer.height()-scaleY(data[index].fan));
+              fLine.setAttribute('y1', chartContainer.height() - scaleY(data[index].fan));
               fLine.setAttribute('x2', chartContainer.width());
-              fLine.setAttribute('y2',0);
+              fLine.setAttribute('y2', 0);
               fLine.setAttribute("stroke", "red")
-      
+
               svg.append(fLine);
-            }      
-      
+            }
+
             const dot = $(`<div id="draggable-dot-${key}-${index}">`)
               .addClass('dot')
               .css({
@@ -433,108 +439,109 @@
               })
               .appendTo(chartContainer)
               .draggable({
-                containment: calculateContainment(data, index, svg, scaleX, scaleY), 
-                drag: function(event, ui) {
+                containment: calculateContainment(data, index, svg, scaleX, scaleY),
+                drag: function (event, ui) {
                   // Update data point on drag
-                  updated_temp = unscaleX(ui.position.left+4);
-                  updated_fan = unscaleY(svg.height() - ui.position.top-4);
+                  updated_temp = unscaleX(ui.position.left + 4);
+                  updated_fan = unscaleY(svg.height() - ui.position.top - 4);
                   point.temp = updated_temp < 0 ? 0 : updated_temp;
                   point.fan = updated_fan < 0 ? 0 : updated_fan;
-      
-      
-                  if(index == 0) {
+
+
+                  if (index == 0) {
                     l1 = $(`#line-${key}-0`)[0];
                     l2 = $(`#line-${key}-1`)[0];
-      
-                    l1.setAttribute('x2', ui.position.left+4);
-                    l1.setAttribute('y2', ui.position.top+4);
-                    l2.setAttribute('x1', ui.position.left+4);
-                    l2.setAttribute('y1', ui.position.top+4);
-                  } else if (index == data.length-1) {
+
+                    l1.setAttribute('x2', ui.position.left + 4);
+                    l1.setAttribute('y2', ui.position.top + 4);
+                    l2.setAttribute('x1', ui.position.left + 4);
+                    l2.setAttribute('y1', ui.position.top + 4);
+                  } else if (index == data.length - 1) {
                     l1 = $(`#line-${key}-${index}`)[0];
-      
-                    l1.setAttribute('x2', ui.position.left+4);
-                    l1.setAttribute('y2', ui.position.top+4);
+
+                    l1.setAttribute('x2', ui.position.left + 4);
+                    l1.setAttribute('y2', ui.position.top + 4);
                   } else {
                     l1 = $(`#line-${key}-${index}`)[0];
-                    l2 = $(`#line-${key}-${index+1}`)[0];
-      
-                    l1.setAttribute('x2', ui.position.left+4);
-                    l1.setAttribute('y2', ui.position.top+4);
-                    l2.setAttribute('x1', ui.position.left+4);
-                    l2.setAttribute('y1', ui.position.top+4);
-                  }
-      
-                  if (index == data.length-1) {
-                    lf = $(`#line-${key}-f`)[0];
-      
-                    lf.setAttribute('x1', ui.position.left+4);
-                    lf.setAttribute('y1', ui.position.top+4);
-                  }
-      
-                  var current_degrees = Math.floor(data[index].temp);
-                  if(units == "F")
-                    current_degrees = current_degrees*1.8+32;
+                    l2 = $(`#line-${key}-${index + 1}`)[0];
 
-                  $(`#draggable-dot-info-${key}-${index}`).html(current_degrees + ' &deg' + units +' at ' + Math.floor(data[index].fan/255*100) + '% fan');
-                  
+                    l1.setAttribute('x2', ui.position.left + 4);
+                    l1.setAttribute('y2', ui.position.top + 4);
+                    l2.setAttribute('x1', ui.position.left + 4);
+                    l2.setAttribute('y1', ui.position.top + 4);
+                  }
+
+                  if (index == data.length - 1) {
+                    lf = $(`#line-${key}-f`)[0];
+
+                    lf.setAttribute('x1', ui.position.left + 4);
+                    lf.setAttribute('y1', ui.position.top + 4);
+                  }
+
+                  var current_degrees = Math.floor(data[index].temp);
+                  if (units == "F")
+                    current_degrees = current_degrees * 1.8 + 32;
+
+                  $(`#draggable-dot-info-${key}-${index}`).html(current_degrees + ' &deg' + units + ' at ' + Math.floor(data[index].fan / 255 * 100) + '% fan');
+
                 },
-                start: function(event, ui) {
+                start: function (event, ui) {
                   $(`#draggable-dot-info-${key}-${index}`).show();
                 },
-                stop: function(event, ui) {
+                stop: function (event, ui) {
                   $(`#draggable-dot-info-${key}-${index}`).hide();
                   //console.log(Math.floor(data[index].temp) + 'c with fans at ' + Math.floor(data[index].fan/255*100) + '%');
-                  
+
                   resetContainment(key, data, svg, scaleX, scaleY);
                 },
               });
-      
-              const dot_tip = $(`<div id="draggable-dot-info-${key}-${index}">`)
+
+            const dot_tip = $(`<div id="draggable-dot-info-${key}-${index}">`)
               .addClass('dot-info')
-              .html(Math.floor(data[index].temp) + '&degC at ' + Math.floor(data[index].fan/255*100) + '% fan')
+              .html(Math.floor(data[index].temp) + '&degC at ' + Math.floor(data[index].fan / 255 * 100) + '% fan')
               .hide()
-              .appendTo(dot);            
+              .appendTo(dot);
           });
 
-    
+
         }
-      
+
         function calculateContainment(data, index, svg, scaleX, scaleY) {
-          if(index == 0 && data.length != 1) {
+          if (index == 0 && data.length != 1) {
             containment = [
-              svg.position().left-4, 
-              svg.position().top+svg.height()-scaleY(data[index+1].fan)-4,
-              svg.position().left+scaleX(data[index+1].temp)-4, 
-              svg.position().top+svg.height()-4
+              svg.position().left - 4,
+              svg.position().top + svg.height() - scaleY(data[index + 1].fan) - 4,
+              svg.position().left + scaleX(data[index + 1].temp) - 4,
+              svg.position().top + svg.height() - 4
             ];
-          } else if (index == data.length-1) {
+          } else if (index == data.length - 1) {
             containment = [
-              svg.position().left+scaleX(data[index-1].temp)-4, 
-              svg.position().top-4, 
-              svg.position().left+svg.width()-4, 
-              svg.position().top+svg.height()-scaleY(data[index-1].fan)-4
+              svg.position().left + scaleX(data[index - 1].temp) - 4,
+              svg.position().top - 4,
+              svg.position().left + svg.width() - 4,
+              svg.position().top + svg.height() - scaleY(data[index - 1].fan) - 4
             ];
           } else {
             containment = [
-              svg.position().left+scaleX(data[index-1].temp)-4, 
-              svg.position().top+svg.height()-scaleY(data[index+1].fan)-4,
-              svg.position().left+scaleX(data[index+1].temp)-4, 
-              svg.position().top+svg.height()-scaleY(data[index-1].fan)-4
+              svg.position().left + scaleX(data[index - 1].temp) - 4,
+              svg.position().top + svg.height() - scaleY(data[index + 1].fan) - 4,
+              svg.position().left + scaleX(data[index + 1].temp) - 4,
+              svg.position().top + svg.height() - scaleY(data[index - 1].fan) - 4
             ];
-          }      
+          }
           return containment;
         }
-      
+
         function resetContainment(key, data, svg, scaleX, scaleY) {
           data.forEach((point, index) => {
             console.log(`#draggable-dot-${key}-${index}`)
             var containment = calculateContainment(data, index, svg, scaleX, scaleY);
-            $(`#draggable-dot-${key}-${index}`).draggable("option", "containment", containment );
+            $(`#draggable-dot-${key}-${index}`).draggable("option", "containment", containment);
           });
         }
       </script>
     </div>
   </div>
 </body>
+
 </html>
