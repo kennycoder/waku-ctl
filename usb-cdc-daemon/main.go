@@ -75,6 +75,30 @@ type LedSettings struct {
 	NumLeds    int    `json:"num_leds"`
 }
 
+type FanCurvePoint struct {
+	Temp float64 `json:"temp"`
+	Fan  int     `json:"fan"`
+}
+
+type FanConfig struct {
+	Sensor      int             `json:"sensor"`
+	TempTh      int             `json:"temp_th"`
+	DutyTh      int             `json:"duty_th"`
+	SudDur      int             `json:"sud_dur"`
+	HaltOn      int             `json:"halt_on"`
+	Units       string          `json:"units"`
+	Mode        int             `json:"mode"`
+	PidKp       float64         `json:"pid_kp"`
+	PidKi       float64         `json:"pid_ki"`
+	PidKd       float64         `json:"pid_kd"`
+	PidSetpoint float64         `json:"pid_setpoint"`
+	Curves      []FanCurvePoint `json:"curves"`
+}
+
+type SensorsResponse struct {
+	Sensors []string `json:"sensors"`
+}
+
 type sensorRegistryInfo struct {
 	subKeyName  string
 	displayName string
@@ -104,6 +128,12 @@ var (
 	// RGB Settings
 	rgbSettings map[string]LedSettings
 	rgbMutex    sync.Mutex
+
+	// Fans Settings
+	fanConfigs       map[string]FanConfig
+	fanConfigsMutex  sync.Mutex
+	availableSensors []string
+	sensorsMutex     sync.Mutex
 
 	// UI Elements for Settings
 	ssidEntry         *widget.Entry
@@ -221,10 +251,6 @@ func makeHomeTab() fyne.CanvasObject {
 	dataList.SetColumnWidth(2, 50)
 
 	return container.NewBorder(nil, nil, nil, nil, dataList)
-}
-
-func makeCurvesTab() fyne.CanvasObject {
-	return widget.NewLabel("Curves - Placeholder")
 }
 
 func makeRgbTab() fyne.CanvasObject {
@@ -488,27 +514,541 @@ func saveRgb() {
 	sendCommand("save-rgb " + string(jsonBytes))
 }
 
+func UpdateSettingsUI() {
+	log.Println("Updating Settings UI...")
+	settingsMutex.Lock()
+	s := currentSettings
+	settingsMutex.Unlock()
+
+	if ssidEntry != nil {
+		ssidEntry.SetText(s.SSID)
+	}
+	if passwordEntry != nil {
+		passwordEntry.SetText(s.Password)
+	}
+	if hostnameEntry != nil {
+		hostnameEntry.SetText(s.Hostname)
+	}
+
+	if unitsSelect != nil {
+		unitsSelect.SetSelected(s.Units)
+	}
+	if offlineCheck != nil {
+		offlineCheck.SetChecked(s.OfflineMode)
+	}
+
+	if fanPassthroughSel != nil {
+		switch s.FanPassthrough {
+		case 0:
+			fanPassthroughSel.SetSelected("FAN_PUMP")
+		case 1:
+			fanPassthroughSel.SetSelected("FAN_1")
+		case 2:
+			fanPassthroughSel.SetSelected("FAN_2")
+		case 3:
+			fanPassthroughSel.SetSelected("FAN_3")
+		default:
+			fanPassthroughSel.SetSelected("None")
+		}
+	}
+
+	if mqttEnableCheck != nil {
+		mqttEnableCheck.SetChecked(s.MqttEnable)
+	}
+	if mqttBrokerEntry != nil {
+		mqttBrokerEntry.SetText(s.MqttBroker)
+	}
+	if mqttTopicEntry != nil {
+		mqttTopicEntry.SetText(s.MqttTopic)
+	}
+	if mqttUserEntry != nil {
+		mqttUserEntry.SetText(s.MqttUsername)
+	}
+	if mqttPassEntry != nil {
+		mqttPassEntry.SetText(s.MqttPassword)
+	}
+	if mqttPortEntry != nil {
+		mqttPortEntry.SetText(fmt.Sprintf("%d", s.MqttPort))
+	}
+	if telItvSelect != nil {
+		telItvSelect.SetSelected(fmt.Sprintf("%d", s.TelemetryItv))
+	}
+
+	// Trigger enable/disable logic
+	if mqttEnableCheck != nil {
+		if s.MqttEnable {
+			if mqttBrokerEntry != nil {
+				mqttBrokerEntry.Enable()
+			}
+			if mqttTopicEntry != nil {
+				mqttTopicEntry.Enable()
+			}
+			if mqttUserEntry != nil {
+				mqttUserEntry.Enable()
+			}
+			if mqttPassEntry != nil {
+				mqttPassEntry.Enable()
+			}
+			if mqttPortEntry != nil {
+				mqttPortEntry.Enable()
+			}
+			if telItvSelect != nil {
+				telItvSelect.Enable()
+			}
+		} else {
+			if mqttBrokerEntry != nil {
+				mqttBrokerEntry.Disable()
+			}
+			if mqttTopicEntry != nil {
+				mqttTopicEntry.Disable()
+			}
+			if mqttUserEntry != nil {
+				mqttUserEntry.Disable()
+			}
+			if mqttPassEntry != nil {
+				mqttPassEntry.Disable()
+			}
+			if mqttPortEntry != nil {
+				mqttPortEntry.Disable()
+			}
+			if telItvSelect != nil {
+				telItvSelect.Disable()
+			}
+		}
+	}
+}
+
 func UpdateRgbUI() {
+	log.Println("Updating RGB UI...")
 	rgbMutex.Lock()
 	defer rgbMutex.Unlock()
 
+	if rgbWidgets == nil {
+		log.Println("UpdateRgbUI error: rgbWidgets map is nil")
+		return
+	}
+
 	for id, settings := range rgbSettings {
 		if widgets, ok := rgbWidgets[id]; ok {
-			widgets.ModeSelect.SetSelectedIndex(settings.Mode)
+			log.Printf("Updating RGB widgets for %s", id)
+			if widgets.ModeSelect != nil {
+				widgets.ModeSelect.SetSelectedIndex(settings.Mode)
+			}
 
-			widgets.SpeedSlider.SetValue(float64(settings.Speed))
-			widgets.SpeedLabel.SetText(fmt.Sprintf("%d", settings.Speed))
+			if widgets.SpeedSlider != nil {
+				widgets.SpeedSlider.SetValue(float64(settings.Speed))
+			}
+			if widgets.SpeedLabel != nil {
+				widgets.SpeedLabel.SetText(fmt.Sprintf("%d", settings.Speed))
+			}
 
-			widgets.NumLedsSlider.SetValue(float64(settings.NumLeds))
-			widgets.NumLedsLabel.SetText(fmt.Sprintf("%d", settings.NumLeds))
+			if widgets.NumLedsSlider != nil {
+				widgets.NumLedsSlider.SetValue(float64(settings.NumLeds))
+			}
+			if widgets.NumLedsLabel != nil {
+				widgets.NumLedsLabel.SetText(fmt.Sprintf("%d", settings.NumLeds))
+			}
 
 			c1 := intToColor(settings.StartColor)
-			widgets.StartColorRect.FillColor = c1
-			widgets.StartColorRect.Refresh()
+			if widgets.StartColorRect != nil {
+				widgets.StartColorRect.FillColor = c1
+				widgets.StartColorRect.Refresh()
+			}
 
 			c2 := intToColor(settings.EndColor)
-			widgets.EndColorRect.FillColor = c2
-			widgets.EndColorRect.Refresh()
+			if widgets.EndColorRect != nil {
+				widgets.EndColorRect.FillColor = c2
+				widgets.EndColorRect.Refresh()
+			}
+		}
+	}
+}
+
+// --- Curves Tab Implementation ---
+
+var fanWidgets map[string]struct {
+	ModeSegment    *widget.Select
+	CurveContainer *fyne.Container
+	PidContainer   *fyne.Container
+	// Common
+	TempSourceSelect *widget.Select
+	TempAlarmSelect  *widget.Select
+	FanAlarmSelect   *widget.Select
+	HaltOnSelect     *widget.Select
+	StepDurSlider    *widget.Slider
+	// PID
+	PidTargetEntry *widget.Entry
+	PidKpEntry     *widget.Entry
+	PidKiEntry     *widget.Entry
+	PidKdEntry     *widget.Entry
+	// Curves (pointers to entries/sliders)
+	CurvePoints []struct {
+		TempSlider *widget.Slider
+		FanSlider  *widget.Slider
+		TempLabel  *widget.Label
+		FanLabel   *widget.Label
+	}
+}
+
+func makeCurvesTab() fyne.CanvasObject {
+	fanWidgets = make(map[string]struct {
+		ModeSegment      *widget.Select
+		CurveContainer   *fyne.Container
+		PidContainer     *fyne.Container
+		TempSourceSelect *widget.Select
+		TempAlarmSelect  *widget.Select
+		FanAlarmSelect   *widget.Select
+		HaltOnSelect     *widget.Select
+		StepDurSlider    *widget.Slider
+		PidTargetEntry   *widget.Entry
+		PidKpEntry       *widget.Entry
+		PidKiEntry       *widget.Entry
+		PidKdEntry       *widget.Entry
+		CurvePoints      []struct {
+			TempSlider *widget.Slider
+			FanSlider  *widget.Slider
+			TempLabel  *widget.Label
+			FanLabel   *widget.Label
+		}
+	})
+
+	// Initialize default map
+	fanConfigs = make(map[string]FanConfig)
+	for i := 0; i < 4; i++ {
+		fanID := fmt.Sprintf("FAN_%d", i)
+		fanConfigs[fanID] = FanConfig{
+			Units: "C",
+			Curves: []FanCurvePoint{
+				{30, 0}, {40, 30}, {50, 60}, {60, 80}, {70, 100},
+			},
+		}
+	}
+
+	fan0 := makeFanSection("FAN_0", "Fan Pump / Header #0")
+	fan1 := makeFanSection("FAN_1", "Fan Header #1")
+	fan2 := makeFanSection("FAN_2", "Fan Header #2")
+	fan3 := makeFanSection("FAN_3", "Fan Header #3")
+
+	refreshBtn := widget.NewButton("Refresh", func() {
+		sendCommand("get-sensors")
+		time.Sleep(100 * time.Millisecond) // Give time for sensors to arrive (not robust but simple)
+		sendCommand("get-curves")
+	})
+
+	saveBtn := widget.NewButton("Save Curves", func() {
+		saveCurves()
+	})
+
+	return container.NewBorder(nil, container.NewHBox(refreshBtn, saveBtn), nil, nil,
+		container.NewVScroll(container.NewVBox(
+			fan0, widget.NewSeparator(),
+			fan1, widget.NewSeparator(),
+			fan2, widget.NewSeparator(),
+			fan3,
+		)))
+}
+
+func makeFanSection(id string, title string) fyne.CanvasObject {
+	label := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+
+	// Common Settings
+	tempSource := widget.NewSelect([]string{"Sensor 0", "Sensor 1"}, nil) // Will populate later
+
+	tempAlarm := widget.NewSelect([]string{"No alarm", ">= 30°C", ">= 40°C", ">= 50°C", ">= 60°C", ">= 70°C", ">= 80°C", ">= 90°C"}, nil)
+	fanAlarm := widget.NewSelect([]string{"No alarm", "< 100 RPM", "< 200 RPM", "< 300 RPM", "< 500 RPM"}, nil)
+
+	haltOn := widget.NewSelect([]string{"No halt", "Halt on fan speed alarm", "Halt on temperature alarm", "Halt on both"}, nil)
+
+	stepDurLabel := widget.NewLabel("1 sec")
+	stepDur := widget.NewSlider(1, 100)
+	stepDur.OnChanged = func(f float64) {
+		stepDurLabel.SetText(fmt.Sprintf("%d sec", int(f)))
+	}
+
+	commonForm := widget.NewForm(
+		widget.NewFormItem("Temp Source", tempSource),
+		widget.NewFormItem("Temp Alarm", tempAlarm),
+		widget.NewFormItem("Fan Alarm", fanAlarm),
+		widget.NewFormItem("Halt On", haltOn),
+		widget.NewFormItem("Step Duration", container.NewBorder(nil, nil, nil, stepDurLabel, stepDur)),
+	)
+
+	// Mode Selection
+	modeSelect := widget.NewSelect([]string{"Curve", "PID"}, nil)
+	modeSelect.SetSelected("Curve")
+
+	// Curve Editor
+	curveContainer := container.NewVBox()
+	var curvePoints []struct {
+		TempSlider *widget.Slider
+		FanSlider  *widget.Slider
+		TempLabel  *widget.Label
+		FanLabel   *widget.Label
+	}
+
+	for i := 0; i < 5; i++ {
+		tLabel := widget.NewLabel(fmt.Sprintf("P%d Temp", i+1))
+		tSlider := widget.NewSlider(0, 100) // 0-100 C
+		tValLabel := widget.NewLabel("30°C")
+		tSlider.OnChanged = func(f float64) { tValLabel.SetText(fmt.Sprintf("%d°C", int(f))) }
+
+		fLabel := widget.NewLabel(fmt.Sprintf("P%d Fan", i+1))
+		fSlider := widget.NewSlider(0, 255) // 0-255 PWM
+		fValLabel := widget.NewLabel("0%")
+		fSlider.OnChanged = func(f float64) { fValLabel.SetText(fmt.Sprintf("%d%%", int(f/2.55))) }
+
+		row := container.NewGridWithColumns(2,
+			container.NewBorder(nil, nil, tLabel, tValLabel, tSlider),
+			container.NewBorder(nil, nil, fLabel, fValLabel, fSlider),
+		)
+		curveContainer.Add(row)
+
+		curvePoints = append(curvePoints, struct {
+			TempSlider *widget.Slider
+			FanSlider  *widget.Slider
+			TempLabel  *widget.Label
+			FanLabel   *widget.Label
+		}{tSlider, fSlider, tValLabel, fValLabel})
+	}
+
+	// PID Editor
+	pidContainer := container.NewVBox()
+	pidTarget := widget.NewEntry()
+	pidTarget.SetText("30")
+	pidKp := widget.NewEntry()
+	pidKp.SetText("1.0")
+	pidKi := widget.NewEntry()
+	pidKi.SetText("0.1")
+	pidKd := widget.NewEntry()
+	pidKd.SetText("0.5")
+
+	pidContainer.Add(widget.NewForm(
+		widget.NewFormItem("Target Temp", pidTarget),
+		widget.NewFormItem("Kp (Reaction)", pidKp),
+		widget.NewFormItem("Ki (Correction)", pidKi),
+		widget.NewFormItem("Kd (Stability)", pidKd),
+	))
+	pidContainer.Hide() // Default hidden
+
+	// Mode Logic
+	modeSelect.OnChanged = func(s string) {
+		if s == "Curve" {
+			curveContainer.Show()
+			pidContainer.Hide()
+		} else {
+			curveContainer.Hide()
+			pidContainer.Show()
+		}
+	}
+
+	// Store widgets
+	fanWidgets[id] = struct {
+		ModeSegment      *widget.Select
+		CurveContainer   *fyne.Container
+		PidContainer     *fyne.Container
+		TempSourceSelect *widget.Select
+		TempAlarmSelect  *widget.Select
+		FanAlarmSelect   *widget.Select
+		HaltOnSelect     *widget.Select
+		StepDurSlider    *widget.Slider
+		PidTargetEntry   *widget.Entry
+		PidKpEntry       *widget.Entry
+		PidKiEntry       *widget.Entry
+		PidKdEntry       *widget.Entry
+		CurvePoints      []struct {
+			TempSlider *widget.Slider
+			FanSlider  *widget.Slider
+			TempLabel  *widget.Label
+			FanLabel   *widget.Label
+		}
+	}{
+		ModeSegment:      modeSelect,
+		CurveContainer:   curveContainer,
+		PidContainer:     pidContainer,
+		TempSourceSelect: tempSource,
+		TempAlarmSelect:  tempAlarm,
+		FanAlarmSelect:   fanAlarm,
+		HaltOnSelect:     haltOn,
+		StepDurSlider:    stepDur,
+		PidTargetEntry:   pidTarget,
+		PidKpEntry:       pidKp,
+		PidKiEntry:       pidKi,
+		PidKdEntry:       pidKd,
+		CurvePoints:      curvePoints,
+	}
+
+	return container.NewVBox(
+		label,
+		commonForm,
+		widget.NewForm(widget.NewFormItem("Mode", modeSelect)),
+		curveContainer,
+		pidContainer,
+	)
+}
+
+func saveCurves() {
+	// Construct Payload
+	payload := make(map[string]FanConfig)
+
+	for id, w := range fanWidgets {
+		cfg := FanConfig{}
+
+		// Common
+		cfg.Sensor = w.TempSourceSelect.SelectedIndex()
+		if cfg.Sensor == -1 {
+			cfg.Sensor = 0
+		}
+
+		// Map Alarms back to values
+		// Temp Alarm
+		taStr := w.TempAlarmSelect.Selected
+		if taStr == "No alarm" {
+			cfg.TempTh = 999
+		} else {
+			fmt.Sscanf(taStr, ">= %d", &cfg.TempTh)
+		}
+
+		// Fan Alarm
+		faStr := w.FanAlarmSelect.Selected
+		if faStr == "No alarm" {
+			cfg.DutyTh = -1
+		} else {
+			fmt.Sscanf(faStr, "< %d", &cfg.DutyTh)
+		}
+
+		cfg.HaltOn = w.HaltOnSelect.SelectedIndex()
+		cfg.SudDur = int(w.StepDurSlider.Value)
+
+		// Mode
+		if w.ModeSegment.Selected == "Curve" {
+			cfg.Mode = 0
+		} else {
+			cfg.Mode = 1
+		}
+
+		// PID
+		fmt.Sscanf(w.PidTargetEntry.Text, "%f", &cfg.PidSetpoint)
+		fmt.Sscanf(w.PidKpEntry.Text, "%f", &cfg.PidKp)
+		fmt.Sscanf(w.PidKiEntry.Text, "%f", &cfg.PidKi)
+		fmt.Sscanf(w.PidKdEntry.Text, "%f", &cfg.PidKd)
+
+		// Curves
+		for _, p := range w.CurvePoints {
+			cfg.Curves = append(cfg.Curves, FanCurvePoint{
+				Temp: p.TempSlider.Value,
+				Fan:  int(p.FanSlider.Value),
+			})
+		}
+
+		payload[id] = cfg
+	}
+
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		dialog.ShowError(err, mainWindow)
+		return
+	}
+	sendCommand("save-curves " + string(jsonBytes))
+}
+
+func UpdateCurvesUI() {
+	log.Println("Updating Curves UI...")
+	fanConfigsMutex.Lock()
+	defer fanConfigsMutex.Unlock()
+
+	if fanWidgets == nil {
+		log.Println("UpdateCurvesUI error: fanWidgets map is nil")
+		return
+	}
+
+	for id, cfg := range fanConfigs {
+		w, ok := fanWidgets[id]
+		if !ok {
+			log.Printf("UpdateCurvesUI: No fan widgets for %s", id)
+			continue
+		}
+
+		log.Printf("UpdateCurvesUI: %s - sensor=%d, mode=%d", id, cfg.Sensor, cfg.Mode)
+
+		// Populate Common
+		if w.TempSourceSelect != nil {
+			if cfg.Sensor >= 0 && cfg.Sensor < len(w.TempSourceSelect.Options) {
+				w.TempSourceSelect.SetSelectedIndex(cfg.Sensor)
+			}
+		}
+
+		// Temp Alarm
+		if w.TempAlarmSelect != nil {
+			if cfg.TempTh >= 999 {
+				w.TempAlarmSelect.SetSelected("No alarm")
+			} else {
+				w.TempAlarmSelect.SetSelected(fmt.Sprintf(">= %d°%s", cfg.TempTh, "C"))
+			}
+		}
+
+		// Fan Alarm
+		if w.FanAlarmSelect != nil {
+			if cfg.DutyTh <= -1 {
+				w.FanAlarmSelect.SetSelected("No alarm")
+			} else {
+				w.FanAlarmSelect.SetSelected(fmt.Sprintf("< %d RPM", cfg.DutyTh))
+			}
+		}
+
+		if w.HaltOnSelect != nil {
+			w.HaltOnSelect.SetSelectedIndex(cfg.HaltOn)
+		}
+
+		if w.StepDurSlider != nil {
+			w.StepDurSlider.SetValue(float64(cfg.SudDur))
+		}
+
+		// Mode
+		if w.ModeSegment != nil {
+			if cfg.Mode == 0 {
+				w.ModeSegment.SetSelected("Curve")
+				if w.CurveContainer != nil {
+					w.CurveContainer.Show()
+				}
+				if w.PidContainer != nil {
+					w.PidContainer.Hide()
+				}
+			} else {
+				w.ModeSegment.SetSelected("PID")
+				if w.CurveContainer != nil {
+					w.CurveContainer.Hide()
+				}
+				if w.PidContainer != nil {
+					w.PidContainer.Show()
+				}
+			}
+		}
+
+		// PID
+		if w.PidTargetEntry != nil {
+			w.PidTargetEntry.SetText(fmt.Sprintf("%.1f", cfg.PidSetpoint))
+		}
+		if w.PidKpEntry != nil {
+			w.PidKpEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKp))
+		}
+		if w.PidKiEntry != nil {
+			w.PidKiEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKi))
+		}
+		if w.PidKdEntry != nil {
+			w.PidKdEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKd))
+		}
+
+		// Curves
+		log.Printf("UpdateCurvesUI: %s - populating %d curve points", id, len(cfg.Curves))
+		for i, p := range cfg.Curves {
+			if i < len(w.CurvePoints) {
+				if w.CurvePoints[i].TempSlider != nil {
+					w.CurvePoints[i].TempSlider.SetValue(p.Temp)
+				}
+				if w.CurvePoints[i].FanSlider != nil {
+					w.CurvePoints[i].FanSlider.SetValue(float64(p.Fan))
+				}
+			}
 		}
 	}
 }
@@ -524,59 +1064,6 @@ func sendCommand(cmd string) {
 		}
 	} else {
 		log.Println("Port not connected")
-	}
-}
-
-func UpdateSettingsUI() {
-	settingsMutex.Lock()
-	s := currentSettings
-	settingsMutex.Unlock()
-
-	ssidEntry.SetText(s.SSID)
-	// passwordEntry.SetText(s.Password) // Don't show password by default? Or do we? usually empty unless received.
-	// The device sends password in get-settings response based on main.cpp.
-	passwordEntry.SetText(s.Password)
-	hostnameEntry.SetText(s.Hostname)
-
-	unitsSelect.SetSelected(s.Units)
-	offlineCheck.SetChecked(s.OfflineMode)
-
-	switch s.FanPassthrough {
-	case 0:
-		fanPassthroughSel.SetSelected("FAN_PUMP")
-	case 1:
-		fanPassthroughSel.SetSelected("FAN_1")
-	case 2:
-		fanPassthroughSel.SetSelected("FAN_2")
-	case 3:
-		fanPassthroughSel.SetSelected("FAN_3")
-	default:
-		fanPassthroughSel.SetSelected("None")
-	}
-
-	mqttEnableCheck.SetChecked(s.MqttEnable)
-	mqttBrokerEntry.SetText(s.MqttBroker)
-	mqttTopicEntry.SetText(s.MqttTopic)
-	mqttUserEntry.SetText(s.MqttUsername)
-	mqttPassEntry.SetText(s.MqttPassword)
-	mqttPortEntry.SetText(fmt.Sprintf("%d", s.MqttPort))
-	telItvSelect.SetSelected(fmt.Sprintf("%d", s.TelemetryItv))
-
-	// Trigger enable/disable logic
-	if s.MqttEnable {
-		mqttBrokerEntry.Enable()
-		mqttTopicEntry.Enable()
-		mqttUserEntry.Enable()
-		mqttPassEntry.Enable()
-		mqttPortEntry.Enable()
-		telItvSelect.Enable()
-	} else {
-		mqttBrokerEntry.Disable()
-		mqttTopicEntry.Disable()
-		mqttUserEntry.Disable()
-		mqttPassEntry.Disable()
-		mqttPortEntry.Disable()
-		telItvSelect.Disable()
 	}
 }
 
@@ -735,34 +1222,96 @@ func processTelemetry(jsonStr string) {
 		// Update Registry (Existing Logic)
 		updateRegistry(telemetry)
 	} else {
-		// Try Settings or RGB
-		// We can check if it has "LED_0" key to identify RGB settings
-		// Or try to unmarshal to map[string]LedSettings
-
-		// Quick check string for "LED_"
+		log.Printf("Non-telemetry JSON received: %s", jsonStr)
+		// Try RGB
 		if strings.Contains(jsonStr, `"LED_`) {
-			// Assume RGB (very naive check but likely effective given our control)
-			var rgb map[string]LedSettings
-			err := json.Unmarshal([]byte(jsonStr), &rgb)
-			if err == nil {
-				rgbMutex.Lock()
-				// Update existing map
-				for k, v := range rgb {
-					rgbSettings[k] = v
+			var rgbPayload map[string]LedSettings
+			if err := json.Unmarshal([]byte(jsonStr), &rgbPayload); err == nil && len(rgbPayload) > 0 {
+				isRgb := false
+				for k := range rgbPayload {
+					if strings.HasPrefix(k, "LED_") {
+						isRgb = true
+						break
+					}
 				}
-				rgbMutex.Unlock()
+				if isRgb {
+					log.Printf("Received RGB settings: %d items", len(rgbPayload))
+					rgbMutex.Lock()
+					if rgbSettings == nil {
+						rgbSettings = make(map[string]LedSettings)
+					}
+					for k, v := range rgbPayload {
+						rgbSettings[k] = v
+					}
+					rgbMutex.Unlock()
+					fyne.Do(func() {
+						UpdateRgbUI()
+					})
+					return
+				}
+			}
+		}
 
+		// Try Sensors (List of sensors)
+		if strings.Contains(jsonStr, `"sensors"`) {
+			var sensResp SensorsResponse
+			if err := json.Unmarshal([]byte(jsonStr), &sensResp); err == nil && len(sensResp.Sensors) > 0 {
+				log.Printf("Received %d available sensors", len(sensResp.Sensors))
+				sensorsMutex.Lock()
+				availableSensors = sensResp.Sensors
+				sensorsMutex.Unlock()
+				// Update UI dropdowns
 				fyne.Do(func() {
-					UpdateRgbUI()
+					fanConfigsMutex.Lock()
+					for id, w := range fanWidgets {
+						selIdx := w.TempSourceSelect.SelectedIndex()
+						w.TempSourceSelect.Options = sensResp.Sensors
+						w.TempSourceSelect.Refresh()
+						if selIdx >= 0 && selIdx < len(sensResp.Sensors) {
+							w.TempSourceSelect.SetSelectedIndex(selIdx)
+						}
+						log.Printf("Refreshed sensors for %s", id)
+					}
+					fanConfigsMutex.Unlock()
 				})
 				return
+			}
+		}
+
+		// Try Curves (FanConfig map)
+		if strings.Contains(jsonStr, `"FAN_`) {
+			var fanPayload map[string]FanConfig
+			if err := json.Unmarshal([]byte(jsonStr), &fanPayload); err == nil && len(fanPayload) > 0 {
+				isFan := false
+				for k := range fanPayload {
+					if strings.HasPrefix(k, "FAN_") {
+						isFan = true
+						break
+					}
+				}
+				if isFan {
+					log.Printf("Received Curves settings: %d fans", len(fanPayload))
+					fanConfigsMutex.Lock()
+					if fanConfigs == nil {
+						fanConfigs = make(map[string]FanConfig)
+					}
+					for k, v := range fanPayload {
+						fanConfigs[k] = v
+					}
+					fanConfigsMutex.Unlock()
+					fyne.Do(func() {
+						UpdateCurvesUI()
+					})
+					return
+				}
 			}
 		}
 
 		// Try Settings
 		var settings Settings
 		err := json.Unmarshal([]byte(jsonStr), &settings)
-		if err == nil {
+		if err == nil && (settings.SSID != "" || settings.Hostname != "") {
+			log.Printf("Received Settings for %s", settings.Hostname)
 			settingsMutex.Lock()
 			// Only update if it looks valid (e.g. Hostname or SSID is present, or just assume)
 			// Actually empty JSON "{}" unmarshals to empty struct without error.
