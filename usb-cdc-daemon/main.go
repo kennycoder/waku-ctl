@@ -284,6 +284,11 @@ func main() {
 func quitApp(a fyne.App) {
 	log.Println("Quitting application...")
 
+	// Cleanup the registry for HWInfo64
+	var telemetry TelemetryData
+	_ = json.Unmarshal([]byte("{\"temperature1\":0, \"temperature2\":0, \"temperature3\":0, \"FAN0\":0, \"FAN1\":0, \"FAN2\":0, \"FAN3\":0}"), &telemetry)
+	updateRegistry(telemetry)
+
 	// Close serial port
 	portMutex.Lock()
 	if globalPort != nil {

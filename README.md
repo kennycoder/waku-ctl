@@ -84,6 +84,14 @@ Also available in [PDF format](media/schematic.pdf).
 [<img src="media/ui-2.png" width="49%">](media/ui-2.png)
 [<img src="media/ui-3.png" width="49%">](media/ui-2.png)
 [<img src="media/ui-4.png" width="49%">](media/ui-2.png)
+
+## Standalone UI
+
+[<img src="media/wui-1.png" width="49%">](media/wui-1.png)
+[<img src="media/wui-2.png" width="49%">](media/wui-2.png)
+[<img src="media/wui-3.png" width="49%">](media/wui-2.png)
+[<img src="media/wui-4.png" width="49%">](media/wui-2.png)
+
 ---
 
 _This project is dedicated to my dad, Alexander Danylchyk who taught me a lot and inspired me to pursue an engineering carrer. You are dearly missed._
