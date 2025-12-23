@@ -219,7 +219,7 @@ func main() {
 
 	contentStack := container.NewStack(homeContent)
 
-	menuItems := []string{"Home", "Curves", "RGB", "Settings"}
+	menuItems := []string{"Home", "Curves", "RGB", "Settings", "Quit"}
 	menuList := widget.NewList(
 		func() int { return len(menuItems) },
 		func() fyne.CanvasObject { return widget.NewLabel("Menu Item") },
@@ -243,6 +243,8 @@ func main() {
 		case 3:
 			contentStack.Add(settingsContent)
 			sendCommand("get-settings")
+		case 4:
+			quitApp(a)
 		}
 		contentStack.Refresh()
 	}
@@ -913,7 +915,11 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 				u = "C"
 			}
 			settingsMutex.Unlock()
-			tValLabel.SetText(fmt.Sprintf("%d°%s", int(f), u))
+			if u == "C" {
+				tValLabel.SetText(fmt.Sprintf("%d°%s", int(f), u))
+			} else {
+				tValLabel.SetText(fmt.Sprintf("%d°%s", int((f*9/5)+32), u))
+			}
 		}
 
 		fLabel := widget.NewLabel(fmt.Sprintf("P%d Fan", i+1))
@@ -1051,7 +1057,12 @@ func saveCurves() {
 		}
 
 		// PID
+		unit := currentSettings.Units
 		fmt.Sscanf(w.PidTargetEntry.Text, "%f", &cfg.PidSetpoint)
+		if unit == "F" {
+			cfg.PidSetpoint = (cfg.PidSetpoint - 32) * 5 / 9
+		}
+
 		fmt.Sscanf(w.PidKpEntry.Text, "%f", &cfg.PidKp)
 		fmt.Sscanf(w.PidKiEntry.Text, "%f", &cfg.PidKi)
 		fmt.Sscanf(w.PidKdEntry.Text, "%f", &cfg.PidKd)
@@ -1125,14 +1136,26 @@ func UpdateCurvesUI() {
 			settingsMutex.Unlock()
 
 			// Update options if unit changed
-			w.TempAlarmSelect.Options = []string{"No alarm",
-				fmt.Sprintf(">= 30°%s", unit),
-				fmt.Sprintf(">= 40°%s", unit),
-				fmt.Sprintf(">= 50°%s", unit),
-				fmt.Sprintf(">= 60°%s", unit),
-				fmt.Sprintf(">= 70°%s", unit),
-				fmt.Sprintf(">= 80°%s", unit),
-				fmt.Sprintf(">= 90°%s", unit),
+			if unit == "C" {
+				w.TempAlarmSelect.Options = []string{"No alarm",
+					fmt.Sprintf(">= 30°%s", unit),
+					fmt.Sprintf(">= 40°%s", unit),
+					fmt.Sprintf(">= 50°%s", unit),
+					fmt.Sprintf(">= 60°%s", unit),
+					fmt.Sprintf(">= 70°%s", unit),
+					fmt.Sprintf(">= 80°%s", unit),
+					fmt.Sprintf(">= 90°%s", unit),
+				}
+			} else {
+				w.TempAlarmSelect.Options = []string{"No alarm",
+					fmt.Sprintf(">= 86°%s", unit),
+					fmt.Sprintf(">= 104°%s", unit),
+					fmt.Sprintf(">= 122°%s", unit),
+					fmt.Sprintf(">= 140°%s", unit),
+					fmt.Sprintf(">= 158°%s", unit),
+					fmt.Sprintf(">= 176°%s", unit),
+					fmt.Sprintf(">= 194°%s", unit),
+				}
 			}
 
 			if cfg.TempTh >= 999 {
@@ -1182,7 +1205,11 @@ func UpdateCurvesUI() {
 
 		// PID
 		if w.PidTargetEntry != nil {
-			w.PidTargetEntry.SetText(fmt.Sprintf("%.1f", cfg.PidSetpoint))
+			if unit == "C" {
+				w.PidTargetEntry.SetText(fmt.Sprintf("%.1f", cfg.PidSetpoint))
+			} else {
+				w.PidTargetEntry.SetText(fmt.Sprintf("%.1f", (cfg.PidSetpoint*9/5)+32))
+			}
 		}
 		if w.PidKpEntry != nil {
 			w.PidKpEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKp))
@@ -1201,7 +1228,11 @@ func UpdateCurvesUI() {
 				if w.CurvePoints[i].TempSlider != nil {
 					w.CurvePoints[i].TempSlider.SetValue(p.Temp)
 					if w.CurvePoints[i].TempLabel != nil {
-						w.CurvePoints[i].TempLabel.SetText(fmt.Sprintf("%d°%s", int(p.Temp), unit))
+						if unit == "C" {
+							w.CurvePoints[i].TempLabel.SetText(fmt.Sprintf("%d°%s", int(p.Temp), unit))
+						} else {
+							w.CurvePoints[i].TempLabel.SetText(fmt.Sprintf("%d°%s", int((p.Temp*9/5)+32), unit))
+						}
 					}
 				}
 				if w.CurvePoints[i].FanSlider != nil {
@@ -1283,6 +1314,8 @@ OUTER:
 
 		reader := make([]byte, 4096)
 		var jsonBuffer []byte
+
+		sendCommand("get-settings")
 
 		for {
 			n, err := port.Read(reader)
