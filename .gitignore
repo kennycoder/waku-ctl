@@ -10,3 +10,6 @@ pcb/Project Outputs for waku-ctl-board
 pcb/Project Logs for waku-ctl-board
 pcb-related/
 pcb/Backup-Full-Board
+
+usb-cdc-daemon/waku-ctl-manager
+usb-cdc-daemon/waku-ctl-manager.exe

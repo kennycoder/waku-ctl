@@ -176,10 +176,17 @@
             fan_data['FAN_2']['pid_ki'] = $('#pid_ki-FAN_2').val();
             fan_data['FAN_3']['pid_ki'] = $('#pid_ki-FAN_3').val();
 
-            fan_data['FAN_0']['pid_setpoint'] = $('#pid_setpoint-FAN_0').val();
-            fan_data['FAN_1']['pid_setpoint'] = $('#pid_setpoint-FAN_1').val();
-            fan_data['FAN_2']['pid_setpoint'] = $('#pid_setpoint-FAN_2').val();
-            fan_data['FAN_3']['pid_setpoint'] = $('#pid_setpoint-FAN_3').val();
+            if (units == "F") {
+              fan_data['FAN_0']['pid_setpoint'] = ($('#pid_setpoint-FAN_0').val() - 32) * (5 / 9);
+              fan_data['FAN_1']['pid_setpoint'] = ($('#pid_setpoint-FAN_1').val() - 32) * (5 / 9);
+              fan_data['FAN_2']['pid_setpoint'] = ($('#pid_setpoint-FAN_2').val() - 32) * (5 / 9);
+              fan_data['FAN_3']['pid_setpoint'] = ($('#pid_setpoint-FAN_3').val() - 32) * (5 / 9);
+            } else {
+              fan_data['FAN_0']['pid_setpoint'] = $('#pid_setpoint-FAN_0').val();
+              fan_data['FAN_1']['pid_setpoint'] = $('#pid_setpoint-FAN_1').val();
+              fan_data['FAN_2']['pid_setpoint'] = $('#pid_setpoint-FAN_2').val();
+              fan_data['FAN_3']['pid_setpoint'] = $('#pid_setpoint-FAN_3').val();
+            }
 
             $('#FAN_0').val(JSON.stringify(fan_data["FAN_0"]));
             $('#FAN_1').val(JSON.stringify(fan_data["FAN_1"]));
@@ -216,7 +223,11 @@
           const pid_kp = fanData['pid_kp'];
           const pid_ki = fanData['pid_ki'];
           const pid_kd = fanData['pid_kd'];
-          const pid_setpoint = fanData['pid_setpoint'];
+          let pid_setpoint = fanData['pid_setpoint'];
+
+          if (units == "F") {
+            pid_setpoint = (pid_setpoint * (9 / 5)) + 32;
+          }
 
           const fanContainer = $('<div>').addClass('fan-container').attr('id', `fan-container-${key}`);
           $('#charts').append(fanContainer);
