@@ -7,6 +7,7 @@
 #include "peripherals_manager.h"
 #include "led_manager.h"
 #include <PID_v1.h>
+#include <ElegantOTA.h>
 
 enum {
   TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP = 1u << 5,
@@ -307,6 +308,7 @@ void loop() {
        //  Serial.printf("------------\n");
     }
 
+    ElegantOTA.loop();
     vTaskDelay(pdMS_TO_TICKS(250)); // Yield, let tasks run
 }
 
@@ -1306,6 +1308,7 @@ void InitializeHttpServer() {
         request->send(200, "application/json", PrepareTelemetryPayload("manual_fetch").c_str());
     });
 
+    ElegantOTA.begin(&webServer);
     webServer.begin();
     Serial.println("HTTP server started.");
 }
