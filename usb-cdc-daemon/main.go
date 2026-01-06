@@ -67,6 +67,7 @@ type Settings struct {
 	MqttPassword   string `json:"mqtt_password"`
 	MqttPort       int    `json:"mqtt_port"`
 	FanPassthrough int    `json:"fan_passthrough"`
+	ScreenRotation int    `json:"screen_rotation"`
 }
 
 // LedSettings represents the configuration for an RGB Strip
@@ -154,6 +155,7 @@ var (
 	mqttPortEntry     *widget.Entry
 	telItvSelect      *widget.Select
 	fanPassthroughSel *widget.Select
+	screenRotCheck    *widget.Check
 
 	// UI Elements for RGB
 	// Pointers to widgets to update them
@@ -385,11 +387,43 @@ func makeRgbTab() fyne.CanvasObject {
 	led0 := makeRgbSection("LED_0", "ARGB Header #1")
 	led1 := makeRgbSection("LED_1", "ARGB Header #2")
 
+	copyTo2Btn := widget.NewButton("Copy to Header #2 \u2193", func() {
+		copyRgbSettings("LED_0", "LED_1")
+	})
+	copyTo1Btn := widget.NewButton("Copy to Header #1 \u2191", func() {
+		copyRgbSettings("LED_1", "LED_0")
+	})
+
+	copyContainer := container.NewCenter(container.NewHBox(copyTo2Btn, copyTo1Btn))
+
 	saveBtn := widget.NewButton("Save Colors", func() {
 		saveRgb()
 	})
 
-	return container.NewBorder(nil, container.NewHBox(saveBtn), nil, nil, container.NewVScroll(container.NewVBox(led0, widget.NewSeparator(), led1)))
+	return container.NewBorder(nil, container.NewHBox(saveBtn), nil, nil, container.NewVScroll(container.NewVBox(led0, widget.NewSeparator(), copyContainer, widget.NewSeparator(), led1)))
+}
+
+func copyRgbSettings(srcID, dstID string) {
+	src, okSrc := rgbWidgets[srcID]
+	dst, okDst := rgbWidgets[dstID]
+
+	if !okSrc || !okDst {
+		return
+	}
+
+	dst.ModeSelect.SetSelectedIndex(src.ModeSelect.SelectedIndex())
+
+	dst.SpeedSlider.SetValue(src.SpeedSlider.Value)
+	dst.SpeedLabel.SetText(fmt.Sprintf("%d", int(src.SpeedSlider.Value)))
+
+	dst.NumLedsSlider.SetValue(src.NumLedsSlider.Value)
+	dst.NumLedsLabel.SetText(fmt.Sprintf("%d", int(src.NumLedsSlider.Value)))
+
+	dst.StartColorRect.FillColor = src.StartColorRect.FillColor
+	dst.StartColorRect.Refresh()
+
+	dst.EndColorRect.FillColor = src.EndColorRect.FillColor
+	dst.EndColorRect.Refresh()
 }
 
 func makeSettingsTab() fyne.CanvasObject {
@@ -403,6 +437,8 @@ func makeSettingsTab() fyne.CanvasObject {
 	offlineCheck = widget.NewCheck("Offline Mode (AP Only)", nil)
 
 	fanPassthroughSel = widget.NewSelect([]string{"FAN_PUMP", "FAN_1", "FAN_2", "FAN_3", "None"}, nil)
+
+	screenRotCheck = widget.NewCheck("Flip Display 180°", nil)
 
 	mqttEnableCheck = widget.NewCheck("Enable MQTT", func(checked bool) {
 		if checked {
@@ -437,6 +473,8 @@ func makeSettingsTab() fyne.CanvasObject {
 		widget.NewFormItem("Units", unitsSelect),
 		widget.NewFormItem("", offlineCheck),
 		widget.NewFormItem("Fan Passthrough", fanPassthroughSel),
+		widget.NewFormItem("Display Setup", layout.NewSpacer()),
+		widget.NewFormItem("", screenRotCheck),
 		widget.NewFormItem("MQTT Setup", layout.NewSpacer()), // Divider equivalent
 		widget.NewFormItem("", mqttEnableCheck),
 		widget.NewFormItem("Broker", mqttBrokerEntry),
@@ -474,6 +512,12 @@ func saveSettings() {
 		s.FanPassthrough = 3
 	default:
 		s.FanPassthrough = -1
+	}
+
+	if screenRotCheck.Checked {
+		s.ScreenRotation = 2
+	} else {
+		s.ScreenRotation = 0
 	}
 
 	s.MqttEnable = mqttEnableCheck.Checked
@@ -661,6 +705,10 @@ func UpdateSettingsUI() {
 		default:
 			fanPassthroughSel.SetSelected("None")
 		}
+	}
+
+	if screenRotCheck != nil {
+		screenRotCheck.SetChecked(s.ScreenRotation == 2)
 	}
 
 	if mqttEnableCheck != nil {

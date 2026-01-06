@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>WaKu-ctl - RGB Control</title>
-<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
-<script src="/all-jquery-deps.min.js"></script>
-<meta charset="utf-8">
-<link rel="stylesheet" href="/styles.css">
+  <title>WaKu-ctl - RGB Control</title>
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  <script src="/all-jquery-deps.min.js"></script>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
   <div class="sidebar">
     <div class="card">
@@ -15,7 +17,7 @@
       </div>
       <h2>Menu</h2>
       <a href="/">Home</a>
-      <a href="/fans" >Fans & Temperatures</a>
+      <a href="/fans">Fans & Temperatures</a>
       <a href="/rgb" class="active">ARGB Lighting</a>
       <a href="/settings">Settings</a>
     </div>
@@ -36,7 +38,7 @@
           <option value="5">Pass-through from the external source</option>
         </select>
         <label for="num_leds_led_0">Amount of LEDs on the strip (<span id="num_leds_led_0_val">32</span>):</label>
-        <input type="range" min="1" max="96" value="10" class="slider" id="num_leds_led_0" name="num_leds_led_0">
+        <input type="range" min="1" max="128" value="10" class="slider" id="num_leds_led_0" name="num_leds_led_0">
         <label for="start_color_led_0">ARGB 1 Color 1:</label>
         <input type="color" id="start_color_led_0" name="start_color_led_0" value="#0000ff">
         <label for="end_color_led_0">ARGB 1 Color 2:</label>
@@ -45,7 +47,12 @@
         <input type="range" min="1" max="100" value="11" class="slider" id="speed_led_0" name="speed_led_0">
 
         <hr style="grid-column: 1 / -1;">
-        
+
+        <div style="grid-column: 1 / -1; display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+          <button type="button" id="copy-to-2" style="width: auto; padding: 5px 15px;">&darr; Copy to Header #2</button>
+          <button type="button" id="copy-to-1" style="width: auto; padding: 5px 15px;">&uarr; Copy to Header #1</button>
+        </div>
+
         <label for="mode_led_1">Operation mode for ARGB header #2:</label>
         <select name="mode_led_1" id="mode_led_1">
           <option value="0">Off</option>
@@ -56,7 +63,7 @@
           <option value="5">Pass-through from the external source</option>
         </select>
         <label for="num_leds_led_1">Amount of LEDs on the strip (<span id="num_leds_led_1_val">32</span>):</label>
-        <input type="range" min="1" max="96" value="12" class="slider" id="num_leds_led_1" name="num_leds_led_1">
+        <input type="range" min="1" max="128" value="12" class="slider" id="num_leds_led_1" name="num_leds_led_1">
         <label for="start_color_led_1">ARGB 2 Color 1:</label>
         <input type="color" id="start_color_led_1" name="start_color_led_1" value="#0000ff">
         <label for="end_color_led_1">ARGB 2 Color 2:</label>
@@ -75,21 +82,21 @@
       return "#" + hex.padStart(len, '0');
     }
 
-    $(document).ready(function() {
+    $(document).ready(function () {
       $.ajax({
         url: '/get-rgb',
         type: 'GET',
         dataType: 'json',
-        success: function(data) {
-          $.each(data, function(index, val_obj) {
+        success: function (data) {
+          $.each(data, function (index, val_obj) {
             var led_id = index.toLowerCase();
 
-            $.each(val_obj, function(name, value) {
+            $.each(val_obj, function (name, value) {
               value = name.includes("color") ? toHexColorString(value) : value;
               $("#" + name + "_" + led_id).val(value);
 
               console.log(name, led_id, value);
-              if($("#" + name + "_" + led_id + "_val").length) {
+              if ($("#" + name + "_" + led_id + "_val").length) {
                 $("#" + name + "_" + led_id + "_val").text(value);
               }
             });
@@ -98,26 +105,26 @@
       });
 
       // Handle form submission
-      $('#rgb-form').submit(function(event) {
+      $('#rgb-form').submit(function (event) {
         event.preventDefault();
 
-        led1_data = 
-          {
-            "speed": $('#speed_led_0').val(),
-            "mode": $('#mode_led_0').val(),
-            "start_color": parseInt($('#start_color_led_0').val().replace("#", ""), 16),
-            "end_color": parseInt($('#end_color_led_0').val().replace("#", ""), 16),
-            "num_leds": $('#num_leds_led_0').val()
-          }
-        
-        led2_data = 
-          {
-            "speed": $('#speed_led_1').val(),
-            "mode": $('#mode_led_1').val(),
-            "start_color": parseInt($('#start_color_led_1').val().replace("#", ""), 16),
-            "end_color": parseInt($('#end_color_led_1').val().replace("#", ""), 16),
-            "num_leds": $('#num_leds_led_1').val()
-          }
+        led1_data =
+        {
+          "speed": $('#speed_led_0').val(),
+          "mode": $('#mode_led_0').val(),
+          "start_color": parseInt($('#start_color_led_0').val().replace("#", ""), 16),
+          "end_color": parseInt($('#end_color_led_0').val().replace("#", ""), 16),
+          "num_leds": $('#num_leds_led_0').val()
+        }
+
+        led2_data =
+        {
+          "speed": $('#speed_led_1').val(),
+          "mode": $('#mode_led_1').val(),
+          "start_color": parseInt($('#start_color_led_1').val().replace("#", ""), 16),
+          "end_color": parseInt($('#end_color_led_1').val().replace("#", ""), 16),
+          "num_leds": $('#num_leds_led_1').val()
+        }
 
         $.ajax({
           url: '/save-rgb',
@@ -126,29 +133,50 @@
             "LED_0": JSON.stringify(led1_data),
             "LED_1": JSON.stringify(led2_data),
           },
-          success: function(response) {
+          success: function (response) {
             alert('Colors saved successfully!');
           },
-          error: function(error) {
+          error: function (error) {
             alert('Error saving colors: ' + error.responseText);
           }
         });
       });
 
-      $('#num_leds_led_0').on('input', function() {
+      $('#num_leds_led_0').on('input', function () {
         $('#num_leds_led_0_val').text($(this).val());
       });
-      $('#num_leds_led_1').on('input', function() {
+      $('#num_leds_led_1').on('input', function () {
         $('#num_leds_led_1_val').text($(this).val());
       });
-      $('#speed_led_0').on('input', function() {
+
+      $('#copy-to-2').click(function () {
+        $('#mode_led_1').val($('#mode_led_0').val());
+        $('#num_leds_led_1').val($('#num_leds_led_0').val());
+        $('#num_leds_led_1_val').text($('#num_leds_led_0').val());
+        $('#start_color_led_1').val($('#start_color_led_0').val());
+        $('#end_color_led_1').val($('#end_color_led_0').val());
+        $('#speed_led_1').val($('#speed_led_0').val());
+        $('#speed_led_1_val').text($('#speed_led_0').val());
+      });
+
+      $('#copy-to-1').click(function () {
+        $('#mode_led_0').val($('#mode_led_1').val());
+        $('#num_leds_led_0').val($('#num_leds_led_1').val());
+        $('#num_leds_led_0_val').text($('#num_leds_led_1').val());
+        $('#start_color_led_0').val($('#start_color_led_1').val());
+        $('#end_color_led_0').val($('#end_color_led_1').val());
+        $('#speed_led_0').val($('#speed_led_1').val());
+        $('#speed_led_0_val').text($('#speed_led_1').val());
+      });
+      $('#speed_led_0').on('input', function () {
         $('#speed_led_0_val').text($(this).val());
       });
-      $('#speed_led_1').on('input', function() {
+      $('#speed_led_1').on('input', function () {
         $('#speed_led_1_val').text($(this).val());
       });
 
     });
   </script>
 </body>
+
 </html>

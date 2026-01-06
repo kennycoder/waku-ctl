@@ -1,9 +1,10 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <Arduino.h> // For String
 #include <string>
 #include <vector>
-#include <Arduino.h> // For String
+
 
 // --- Enums ---
 enum class LedChannel { Internal, External };
@@ -11,7 +12,7 @@ enum class ScreenView { Overview, Temperatures, Fans, Rgb };
 
 // --- Structs ---
 struct Settings {
-  
+
   String ssid;
   String password;
   String hostname;
@@ -28,7 +29,8 @@ struct Settings {
   String mqtt_password = "";
   int mqtt_port = 1883;
 
-  int8_t fan_passthrough = 0; 
+  int8_t fan_passthrough = 0;
+  uint8_t screen_rotation = 0;
 };
 
 struct FanSpeedPoint {
@@ -41,7 +43,8 @@ struct TemperatureSensorSettings {
   int temperature_alarm_threshold = 999;
   int rpm_alarm_threshold = -1;
   uint8_t step_duration_seconds = 1;
-  uint8_t halt_on = 0; // 0: No halt, 1: Halt on fan speed alarm, 2: Halt on temperature alarm
+  uint8_t halt_on =
+      0; // 0: No halt, 1: Halt on fan speed alarm, 2: Halt on temperature alarm
   uint8_t mode = 0; // 0: Curves, 1: PID
   double pid_kp = 2;
   double pid_ki = 5;

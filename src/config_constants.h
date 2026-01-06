@@ -15,8 +15,8 @@ constexpr unsigned long TELEMETRY_INTERVAL_MS = 30000;
 constexpr bool CLEAR_PREFERENCES_ON_EVERY_BOOT = false;
 
 // --- Screen ---
-constexpr int SCREEN_WIDTH = 128; // OLED display width, in pixels
-constexpr int SCREEN_HEIGHT = 64; // OLED display height, in pixels
+constexpr int SCREEN_WIDTH = 128;     // OLED display width, in pixels
+constexpr int SCREEN_HEIGHT = 64;     // OLED display height, in pixels
 constexpr uint8_t SCREEN_ADDR = 0x3C; // 0x3D for 128x64, 0x3C for 128x32
 
 // --- Thermistor Control ---
@@ -35,18 +35,19 @@ constexpr int TACH_PWM_CHANNEL = 15;
 
 // --- LED Control ---
 constexpr int ACTIVE_LED_STRIPS = 2;
-constexpr int MAX_LEDS_PER_STRIP = 96;
+constexpr int MAX_LEDS_PER_STRIP = 128;
 
 // --- Hardware Counts ---
 constexpr int ACTIVE_THERMISTORS = 3;
-constexpr int ACTIVE_THERMISTORS_DELTAS = (ACTIVE_THERMISTORS * (ACTIVE_THERMISTORS - 1)) / 2;
-constexpr int ACTIVE_THERMISTORS_WITH_DELTAS = ACTIVE_THERMISTORS + ACTIVE_THERMISTORS_DELTAS;
+constexpr int ACTIVE_THERMISTORS_DELTAS =
+    (ACTIVE_THERMISTORS * (ACTIVE_THERMISTORS - 1)) / 2;
+constexpr int ACTIVE_THERMISTORS_WITH_DELTAS =
+    ACTIVE_THERMISTORS + ACTIVE_THERMISTORS_DELTAS;
 constexpr int ACTIVE_FANS = 4;
-
 
 // --- Other Constants ---
 constexpr int HALT_ON_ALARM_NONE = 0;
-constexpr int HALT_ON_ALARM_FAN = 1;   
+constexpr int HALT_ON_ALARM_FAN = 1;
 constexpr int HALT_ON_ALARM_TEMP = 2;
 constexpr int HALT_ON_ALARM_BOTH = 3;
 

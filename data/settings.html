@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>WaKu-ctl - Settings</title>
-<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
-<script src="/all-jquery-deps.min.js"></script>
-<meta charset="utf-8">
-<link rel="stylesheet" href="/styles.css">
+  <title>WaKu-ctl - Settings</title>
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  <script src="/all-jquery-deps.min.js"></script>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
 
   <div class="sidebar">
@@ -16,7 +18,7 @@
       </div>
       <h2>Menu</h2>
       <a href="/">Home</a>
-      <a href="/fans" >Fans & Temperatures</a>
+      <a href="/fans">Fans & Temperatures</a>
       <a href="/rgb">ARGB Lighting</a>
       <a href="/settings" class="active">Settings</a>
     </div>
@@ -44,6 +46,13 @@
           <option value="F">Farenheit</option>
         </select>
 
+        <h1>Display setup</h1>
+        <hr style="grid-column: 1 / -1;">
+        <label for="screen_rotation_check">Flip Display 180°:</label>
+        <input type="checkbox" id="screen_rotation_check" name="screen_rotation_check" value="2"
+          style="width: min-content;">
+        <input type="hidden" id="screen_rotation" name="screen_rotation" value="0">
+
         <h1>Fan setup</h1>
         <hr style="grid-column: 1 / -1;">
         <label for="fan_passthrough">Which FAN RPM to passthrough</label>
@@ -59,8 +68,8 @@
         <hr style="grid-column: 1 / -1;">
 
         <label style="text-align: right;" for="mqtt_enable">Enable sending telemetry via MQTT</label>
-        <input type="checkbox" id="mqtt_enable" name="mqtt_enable" value="true" disabled  style="width: min-content;">
-        
+        <input type="checkbox" id="mqtt_enable" name="mqtt_enable" value="true" disabled style="width: min-content;">
+
         <label for="mqtt_broker">MQTT Broker:</label>
         <input type="text" id="mqtt_broker" name="mqtt_broker">
 
@@ -95,8 +104,8 @@
   </div>
 
   <script>
-  function toggleMQTTElements() {
-      if($('#mqtt_enable').is(":checked")) {
+    function toggleMQTTElements() {
+      if ($('#mqtt_enable').is(":checked")) {
         $('#mqtt_broker').prop("readonly", false);
         $('#mqtt_topic').prop("readonly", false);
         $('#mqtt_username').prop("readonly", false);
@@ -111,39 +120,39 @@
         $('#mqtt_port').prop("readonly", true);
         $('#tel_itv').prop("readonly", true);
       }
-  }
+    }
 
-  $(document).ready(function() {
-    toggleMQTTElements(); // disable fields until everything is loaded
+    $(document).ready(function () {
+      toggleMQTTElements(); // disable fields until everything is loaded
 
-    // Fetch WiFi networks on page load
-    $.ajax({
-      url: '/networks',
-      type: 'GET',
-      dataType: 'json',
-      success: function(data) {
-        var networkSelect = $('#ssid');
+      // Fetch WiFi networks on page load
+      $.ajax({
+        url: '/networks',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          var networkSelect = $('#ssid');
 
-        networkSelect.append($('<option>', {
+          networkSelect.append($('<option>', {
             value: "",
             text: "-- Offline (AP) Mode --"
           }));
-        
-        networkSelect.find('option').get(0).remove();
-        $('#ssid').val("");
 
-        $.each(data.networks, function(index, network) {
-          networkSelect.append($('<option>', {
-            value: network,
-            text: network
-          }));
-        });
+          networkSelect.find('option').get(0).remove();
+          $('#ssid').val("");
 
-        $.ajax({
-          url: '/get-settings',
-          type: 'GET',
-          dataType: 'json',
-          success: function(data) {
+          $.each(data.networks, function (index, network) {
+            networkSelect.append($('<option>', {
+              value: network,
+              text: network
+            }));
+          });
+
+          $.ajax({
+            url: '/get-settings',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
               $('#hostname').val(data.hostname);
               $('#ssid').val(data.ssid).change();
               $('#password').val(data.password);
@@ -157,76 +166,83 @@
               $('#mqtt_port').val(data.mqtt_port);
               $('#tel_itv').val(data.tel_itv);
               $('#fan_passthrough').val(data.fan_passthrough);
+              $('#screen_rotation_check').prop('checked', data.screen_rotation == 2);
+              $('#screen_rotation').val(data.screen_rotation);
               toggleMQTTElements();
-          }
-        });      
-      }
-    });
-
-
-    // Update SSID field when network is selected
-    $('#ssid').change(function() {
-      if($('#ssid :selected').text() == "-- Offline (AP) Mode --") {
-        $('#offline_mode').val("true");
-
-        $('#mqtt_enable').attr('disabled', true);
-        $('#mqtt_enable').attr('checked', false);
-        
-        $('#mqtt_broker').prop("readonly", true);
-      } else {
-        $('#offline_mode').val("false");
-
-        $('#mqtt_enable').removeAttr('disabled');
-
-        $('#mqtt_broker').prop("readonly", false);
-      }
-    });
-
-    $('#reset').click(function() {
-      if (confirm("Are you sure you want to factory reset the device?") == true) {
-        $.ajax({
-          url: '/clear-settings',
-          type: 'GET',
-          dataType: 'json',
-          success: function(data) {
-            alert('Device was reset to factory settings! Please wait while the device is restarting. Check whether you are reconnected to controller\'s WiFi (WaKu-ctl).');
-            window.location.href = '/';
-          }
-        });    
-      }
-    });
-
-    $('#mqtt_enable').click(function() {
-      toggleMQTTElements();
-    });
-
-    // Handle form submission
-    $('#wifi-form').submit(function(event) {
-      event.preventDefault(); // Prevent default form submission
-
-      $.ajax({
-        url: '/save-settings',
-        type: 'POST',
-        data: $(this).serialize(),
-        success: function(response) {
-          // Handle successful setup (e.g., display a success message)
-          if ($('#offline_mode').val() == "true") {
-            alert('Settings were saved! Please wait while the device is restarting. Check whether you are reconnected to controller\'s WiFi (WaKu-ctl).');
-            //window.location.href = '/';
-          } else {
-            alert('Settings were saved! Please wait while the device is restarting. Check your router to find the IP address of the WaKu controller.');
-            //window.location.href = '/';
-          }
-        },
-        error: function(error) {
-          // Handle setup errors (e.g., display an error message)
-          alert('WiFi setup failed: ' + error.responseText);
+            }
+          });
         }
       });
+
+
+      // Update SSID field when network is selected
+      $('#ssid').change(function () {
+        if ($('#ssid :selected').text() == "-- Offline (AP) Mode --") {
+          $('#offline_mode').val("true");
+
+          $('#mqtt_enable').attr('disabled', true);
+          $('#mqtt_enable').attr('checked', false);
+
+          $('#mqtt_broker').prop("readonly", true);
+        } else {
+          $('#offline_mode').val("false");
+
+          $('#mqtt_enable').removeAttr('disabled');
+
+          $('#mqtt_broker').prop("readonly", false);
+        }
+      });
+
+      $('#reset').click(function () {
+        if (confirm("Are you sure you want to factory reset the device?") == true) {
+          $.ajax({
+            url: '/clear-settings',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+              alert('Device was reset to factory settings! Please wait while the device is restarting. Check whether you are reconnected to controller\'s WiFi (WaKu-ctl).');
+              window.location.href = '/';
+            }
+          });
+        }
+      });
+
+      $('#mqtt_enable').click(function () {
+        toggleMQTTElements();
+      });
+
+      $('#screen_rotation_check').change(function () {
+        $('#screen_rotation').val(this.checked ? "2" : "0");
+      });
+
+      // Handle form submission
+      $('#wifi-form').submit(function (event) {
+        event.preventDefault(); // Prevent default form submission
+
+        $.ajax({
+          url: '/save-settings',
+          type: 'POST',
+          data: $(this).serialize(),
+          success: function (response) {
+            // Handle successful setup (e.g., display a success message)
+            if ($('#offline_mode').val() == "true") {
+              alert('Settings were saved! Please wait while the device is restarting. Check whether you are reconnected to controller\'s WiFi (WaKu-ctl).');
+              //window.location.href = '/';
+            } else {
+              alert('Settings were saved! Please wait while the device is restarting. Check your router to find the IP address of the WaKu controller.');
+              //window.location.href = '/';
+            }
+          },
+          error: function (error) {
+            // Handle setup errors (e.g., display an error message)
+            alert('WiFi setup failed: ' + error.responseText);
+          }
+        });
+      });
     });
-  });
 
   </script>
 
 </body>
+
 </html>
