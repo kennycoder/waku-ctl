@@ -68,7 +68,7 @@ func main() {
 
 	http.HandleFunc("/get-sensors", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
-		fmt.Fprintf(w, `["TEMP_1", "TEMP_2", "TEMP_3"]`)
+		fmt.Fprintf(w, `{"sensors":["TEMP_1","TEMP_2","TEMP_3","DELTA_T1_T2","DELTA_T1_T3","DELTA_T2_T3"]}`)
 	})
 
 	http.HandleFunc("/get-settings", func(w http.ResponseWriter, r *http.Request) {

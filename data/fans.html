@@ -7,7 +7,6 @@
   <script src="/all-jquery-deps.min.js"></script>
   <meta charset="utf-8">
   <link rel="stylesheet" href="/styles.css">
-</head>
 <style>
   .tab-content {
     visibility: hidden;
@@ -46,7 +45,7 @@
     margin-bottom: -1px;
   }
 </style>
-
+</head>
 <body>
 
   <div class="sidebar">
@@ -234,6 +233,71 @@
 
           var fanLabelOverride = (key == "FAN_0") ? "FAN_PUMP" : key;
 
+          // --- Copy From Feature ---
+          const copyContainer = $('<div style="border: 1px dotted; border-top: 0px; padding: 10px;"></div>');
+          const copyLabel = $('<label style="display: inline">Copy from: </label>');
+          const copySelect = $(`<select style="margin: 0; padding: 4px;" id="copy-from-${key}"><option value="">-- Select Fan --</option></select>`);
+          
+          ['FAN_0', 'FAN_1', 'FAN_2', 'FAN_3'].forEach(fKey => {
+            if (fKey !== key) {
+              let label = (fKey == "FAN_0") ? "FAN_PUMP" : fKey;
+              copySelect.append($('<option>', { value: fKey, text: label }));
+            }
+          });
+
+          const copyBtn = $('<button type="button" style="margin-left: 5px; padding: 2px 8px;">Copy</button>');
+          
+          copyBtn.click(function() {
+            const srcKey = copySelect.val();
+            if (!srcKey) return;
+            
+            if (confirm(`Copy configuration from ${srcKey} to ${key}? This will overwrite current settings for ${key}.`)) {
+              // Deep copy source data to destination
+              // Note: We need to be careful not to reference the same object
+              fan_data[key] = JSON.parse(JSON.stringify(fan_data[srcKey]));
+              
+              // We need to re-render the chart and controls for this key
+              // Simplest way is to remove the container and recreate it,
+              // BUT we need to maintain order.
+              // Better approach: Update UI elements values from data.
+              
+              // 1. Update Mode
+              fan_data[key].mode = fan_data[srcKey].mode; // Ensure mode is copied in data
+              
+              const mode = fan_data[key].mode;
+              $(`#tabs-${key} ul li a`).removeClass('active');
+              $(`#tabs-${key} .tab-content`).removeClass('active');
+              
+              if (mode == 0) { // Curve
+                 $(`a[href="#tab-curve-${key}"]`).addClass('active');
+                 $(`#tab-curve-${key}`).addClass('active');
+              } else { // PID
+                 $(`a[href="#tab-pid-${key}"]`).addClass('active');
+                 $(`#tab-pid-${key}`).addClass('active');
+              }
+
+              // 2. Update Curve Points (Draggable Dots & Lines)
+              // This is complex because the DOM elements are bound to specific data objects.
+              // Since we replaced fan_data[key], we should probably re-initialize the chart.
+              
+              // Let's reload the page or re-fetch data? No, that's slow.
+              // Let's just reload the chart for this specific key.
+              $(`#fan-container-${key}`).remove();
+              
+              // We need to insert it back in the correct position.
+              // Since 'charts' appends, removing and calling createChart will put it at the end.
+              // This might be acceptable or we can just reload all charts.
+              // Let's try to reload all charts to keep it simple and consistent.
+               $('#charts').empty();
+               for (const k in fan_data) {
+                 createChart(k, fan_data[k]);
+               }
+            }
+          });
+
+          copyContainer.append(copyLabel).append(copySelect).append(copyBtn);
+          // -------------------------
+
           const tabsContainer = $(`
             <div id="tabs-${key}" class="tabs">
               <ul>
@@ -245,6 +309,7 @@
             </div>
           `);
           fan_data[key]['mode'] = mode;
+
           fanContainer.append(tabsContainer);
 
           // Custom tab logic
@@ -323,6 +388,7 @@
 
           $('<hr style="grid-column: 1 / -1;">').appendTo(controlsContainer);
 
+          $('#tab-curve-' + key).append(copyContainer);
           $('#tab-curve-' + key).append(chartContainer);
 
           const pidControlsContainer = $(`

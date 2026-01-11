@@ -3,4 +3,4 @@ Icon = "tray.png"
 Name = "waku-ctl-manager"
 ID = "com.kennyslabs.wakuctl"
 Version = "1.2"
-Build = 10
+Build = 13

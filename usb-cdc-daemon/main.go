@@ -1053,8 +1053,64 @@ func makeCurvesTab() fyne.CanvasObject {
 		)))
 }
 
+func copyFanConfig(srcID, dstID string) {
+	// 1. Get Source Config from UI (most up-to-date)
+	// We need a helper to read UI to Config struct, similar to saveCurves logic but single
+	// Or we can just read the fanConfigs map if we assume UI updates map...
+	// Currently UI doesn't update map until save.
+	// So we must read from UI widgets.
+
+	srcW, okSrc := fanWidgets[srcID]
+	dstW, okDst := fanWidgets[dstID]
+
+	if !okSrc || !okDst {
+		return
+	}
+
+	// Copy Values
+
+	// Common
+	dstW.TempSourceSelect.SetSelectedIndex(srcW.TempSourceSelect.SelectedIndex())
+	dstW.TempAlarmSelect.SetSelected(srcW.TempAlarmSelect.Selected)
+	dstW.FanAlarmSelect.SetSelected(srcW.FanAlarmSelect.Selected)
+	dstW.HaltOnSelect.SetSelectedIndex(srcW.HaltOnSelect.SelectedIndex())
+	dstW.StepDurSlider.SetValue(srcW.StepDurSlider.Value)
+
+	// Mode
+	dstW.ModeSegment.SetSelected(srcW.ModeSegment.Selected)
+
+	// PID
+	dstW.PidTargetEntry.SetText(srcW.PidTargetEntry.Text)
+	dstW.PidKpEntry.SetText(srcW.PidKpEntry.Text)
+	dstW.PidKiEntry.SetText(srcW.PidKiEntry.Text)
+	dstW.PidKdEntry.SetText(srcW.PidKdEntry.Text)
+
+	// Curves
+	for i := 0; i < len(srcW.CurvePoints) && i < len(dstW.CurvePoints); i++ {
+		dstW.CurvePoints[i].TempSlider.SetValue(srcW.CurvePoints[i].TempSlider.Value)
+		dstW.CurvePoints[i].FanSlider.SetValue(srcW.CurvePoints[i].FanSlider.Value)
+	}
+
+	dialog.ShowInformation("Copy Config", fmt.Sprintf("Copied configuration from %s to %s", srcID, dstID), mainWindow)
+}
+
 func makeFanSection(id string, title string) fyne.CanvasObject {
 	label := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true, Underline: true})
+
+	// Copy From Button
+	copySelect := widget.NewSelect([]string{"FAN_0", "FAN_1", "FAN_2", "FAN_3"}, nil)
+	copySelect.PlaceHolder = "Copy from..."
+	copyBtn := widget.NewButton("Copy", func() {
+		if copySelect.Selected == "" {
+			return
+		}
+		if copySelect.Selected == id {
+			dialog.ShowInformation("Copy Config", "Cannot copy from self", mainWindow)
+			return
+		}
+		copyFanConfig(copySelect.Selected, id)
+	})
+	copyContainer := container.NewHBox(layout.NewSpacer(), widget.NewLabel("Copy from:"), copySelect, copyBtn)
 
 	// Common Settings
 	availableSensorsMutex.Lock()
@@ -1208,7 +1264,7 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 	}
 
 	return container.NewVBox(
-		label,
+		container.NewBorder(nil, nil, label, copyContainer),
 		commonForm,
 		widget.NewForm(widget.NewFormItem("Mode", modeSelect)),
 		curveContainer,
