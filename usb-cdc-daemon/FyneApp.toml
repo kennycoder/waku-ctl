@@ -1,6 +1,6 @@
 [Details]
-  Icon = "tray.png"
-  Name = "Waku Controller"
-  ID = "com.kennyslabs.wakuctl"
-  Version = "0.0.2"
-  Build = 2
+Icon = "tray.png"
+Name = "waku-ctl-manager"
+ID = "com.kennyslabs.wakuctl"
+Version = "1.2"
+Build = 10

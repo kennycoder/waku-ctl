@@ -126,8 +126,8 @@ void InitializeTasks() {
   xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL,
               6, &gProcessPIDControllerTaskHandle);
   xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 5, NULL);
-  xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4,
-              NULL);
+  // xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4,
+  //             NULL);
   xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
   xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 4096, NULL, 2, NULL);
   xTaskCreate(PlayAlarmsTask, "PlayAlarms", 4096, NULL, tskIDLE_PRIORITY, NULL);
@@ -252,6 +252,9 @@ void setup() {
 
   // Reset button task needs to be started earlier
   xTaskCreate(MonitorButtonTask, "MonitorButton", 4096, NULL, 1, NULL);
+  // Same goes for signal passthrough
+  xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4,
+              NULL);
 
   InitializeConfig();
   InitializeOutputs();
@@ -949,6 +952,27 @@ void SaveRgbFromJson(const JsonVariant &json) {
   }
 }
 
+String GenerateBackupJsonString() {
+  String json = "{";
+  json += "\"settings\":" + GenerateSettingsJsonString() + ",";
+  json += "\"fans\":" + GenerateFanCurvesJsonString() + ",";
+  json += "\"rgb\":" + GenerateRgbJsonString();
+  json += "}";
+  return json;
+}
+
+void RestoreBackupFromJson(const JsonVariant &json) {
+  if (json.containsKey("settings")) {
+    SaveSettingsFromJson(json["settings"]);
+  }
+  if (json.containsKey("fans")) {
+    SaveFanCurvesFromJson(json["fans"]);
+  }
+  if (json.containsKey("rgb")) {
+    SaveRgbFromJson(json["rgb"]);
+  }
+}
+
 void NativeUsbTelemetryTask(void *pvParameters) {
   unsigned long last_telemetry_time = 0;
   const unsigned long telemetry_interval =
@@ -1016,6 +1040,17 @@ void NativeUsbTelemetryTask(void *pvParameters) {
               if (!error) {
                 SaveRgbFromJson(doc);
                 USBTelemetryPort.println("{\"status\": \"rgb_saved\"}");
+              } else {
+                USBTelemetryPort.println("{\"error\": \"invalid_json\"}");
+              }
+            } else if (command == "backup") {
+              USBTelemetryPort.println(GenerateBackupJsonString());
+            } else if (command == "restore") {
+              if (!error) {
+                RestoreBackupFromJson(doc);
+                USBTelemetryPort.println("{\"status\": \"restored_restarting\"}");
+                delay(500);
+                esp_restart();
               } else {
                 USBTelemetryPort.println("{\"error\": \"invalid_json\"}");
               }
@@ -1415,6 +1450,39 @@ void InitializeHttpServer() {
     String buffer;
     serializeJson(doc, buffer);
     request->send(200, "application/json", buffer);
+  });
+
+  // API: Backup
+  webServer.on("/backup", HTTP_GET, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response =
+        request->beginResponse(200, "application/json", GenerateBackupJsonString());
+    response->addHeader("Content-Disposition",
+                        "attachment; filename=\"waku-ctl-backup.json\"");
+    request->send(response);
+  });
+
+  // API: Restore
+  webServer.on("/restore", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("config", true)) { // true = POST param
+      String config_str = request->getParam("config", true)->value();
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, config_str);
+      if (!error) {
+        RestoreBackupFromJson(doc);
+        request->send(200, "application/json",
+                      "{\"status\": \"restored_restarting\"}");
+        request->onDisconnect([]() {
+          Serial.println("Restored backup, rebooting...");
+          delay(1000);
+          esp_restart();
+        });
+      } else {
+        request->send(400, "application/json", "{\"error\": \"invalid_json\"}");
+      }
+    } else {
+      request->send(400, "application/json",
+                    "{\"error\": \"missing_config_param\"}");
+    }
   });
 
   // API: Save Fans & Temperatures

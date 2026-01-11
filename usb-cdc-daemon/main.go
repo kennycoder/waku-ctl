@@ -5,9 +5,15 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gofrs/flock"
+
+	"io"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -141,6 +147,10 @@ var (
 	availableSensors      []string
 	availableSensorsMutex sync.Mutex
 
+	// Backup
+	pendingBackupWriter      fyne.URIWriteCloser
+	pendingBackupWriterMutex sync.Mutex
+
 	// UI Elements for Settings
 	ssidEntry         *widget.Entry
 	passwordEntry     *widget.Entry
@@ -156,6 +166,7 @@ var (
 	telItvSelect      *widget.Select
 	fanPassthroughSel *widget.Select
 	screenRotCheck    *widget.Check
+	minimizeStart     *widget.Check
 
 	// UI Elements for RGB
 	// Pointers to widgets to update them
@@ -200,6 +211,21 @@ func getTempUnit(td TelemetryData) string {
 }
 
 func main() {
+	lockFile := filepath.Join(os.TempDir(), "waku-ctl.lock")
+	fileLock := flock.New(lockFile)
+
+	locked, err := fileLock.TryLock()
+	if err != nil {
+		log.Printf("Error acquiring lock: %v", err)
+		return
+	}
+
+	if !locked {
+		log.Println("Another instance is already running. Exiting.")
+		return
+	}
+	defer fileLock.Unlock()
+
 	a := app.NewWithID("com.kennyslabs.wakuctl")
 	w := a.NewWindow("Waku Controller")
 	mainWindow = w
@@ -212,6 +238,8 @@ func main() {
 			Unit:  info.defaultUnit,
 		})
 	}
+
+	w.SetIcon(resourceTrayPng)
 
 	// Create Tabs Content
 	homeContent := makeHomeTab()
@@ -289,14 +317,7 @@ func main() {
 		desk.SetSystemTrayMenu(m)
 
 		// Tray Icon
-		iconPath := "tray.png" // Should be in the same directory as the executable or adjusted
-		if resource, err := fyne.LoadResourceFromPath(iconPath); err == nil {
-			desk.SetSystemTrayIcon(resource)
-		} else {
-			log.Printf("Failed to load tray icon %s: %v", iconPath, err)
-			// Fallback to app icon or theme icon if tray.png is missing
-			desk.SetSystemTrayIcon(theme.SettingsIcon())
-		}
+		desk.SetSystemTrayIcon(resourceTrayPng)
 	}
 
 	// Intercept close to hide to tray
@@ -306,7 +327,12 @@ func main() {
 
 	go startTelemetryMonitor()
 
-	w.ShowAndRun()
+	startMinimized := a.Preferences().Bool("StartMinimized")
+	if !startMinimized {
+		w.Show()
+	}
+
+	a.Run()
 }
 
 func quitApp(a fyne.App) {
@@ -439,6 +465,8 @@ func makeSettingsTab() fyne.CanvasObject {
 	fanPassthroughSel = widget.NewSelect([]string{"FAN_PUMP", "FAN_1", "FAN_2", "FAN_3", "None"}, nil)
 
 	screenRotCheck = widget.NewCheck("Flip Display 180°", nil)
+	minimizeStart = widget.NewCheck("Start Minimized", nil)
+	minimizeStart.SetChecked(fyne.CurrentApp().Preferences().Bool("StartMinimized"))
 
 	mqttEnableCheck = widget.NewCheck("Enable MQTT", func(checked bool) {
 		if checked {
@@ -475,6 +503,8 @@ func makeSettingsTab() fyne.CanvasObject {
 		widget.NewFormItem("Fan Passthrough", fanPassthroughSel),
 		widget.NewFormItem("Display Setup", layout.NewSpacer()),
 		widget.NewFormItem("", screenRotCheck),
+		widget.NewFormItem("App Settings", layout.NewSpacer()),
+		widget.NewFormItem("", minimizeStart),
 		widget.NewFormItem("MQTT Setup", layout.NewSpacer()), // Divider equivalent
 		widget.NewFormItem("", mqttEnableCheck),
 		widget.NewFormItem("Broker", mqttBrokerEntry),
@@ -490,7 +520,127 @@ func makeSettingsTab() fyne.CanvasObject {
 		saveSettings()
 	})
 
-	return container.NewBorder(nil, container.NewHBox(saveBtn), nil, nil, container.NewVScroll(form))
+	backupBtn := widget.NewButton("Backup / Restore", func() {
+		showBackupRestoreDialog()
+	})
+
+	return container.NewBorder(nil, container.NewHBox(saveBtn, backupBtn), nil, nil, container.NewVScroll(form))
+}
+
+func showBackupRestoreDialog() {
+	d := dialog.NewCustom("Backup & Restore", "Close", container.NewVBox(
+		widget.NewButton("Save Backup to File", func() {
+			saveBackupToFile()
+		}),
+		widget.NewButton("Restore Backup from File", func() {
+			restoreBackupFromFile()
+		}),
+	), mainWindow)
+	d.Resize(fyne.NewSize(300, 150))
+	d.Show()
+}
+
+func saveBackupToFile() {
+	dialog.ShowFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil {
+			dialog.ShowError(err, mainWindow)
+			return
+		}
+		if writer == nil {
+			return // cancelled
+		}
+
+		// Request backup from device
+		// We need to wait for response, this is tricky with async serial.
+		// For now, we'll implement a simple wait loop or callback mechanism.
+		// BUT since processTelemetry handles async, we can use a temporary channel or global variable.
+
+		// Better approach: Send command, show "Downloading..." dialog.
+		// When "backup" JSON arrives in processTelemetry, we write it to file and close dialog.
+
+		// Simplified for now: We assume the device sends the JSON immediately after 'backup' command
+		// and we can catch it.
+
+		// NOTE: This requires `processTelemetry` to handle "backup" response which might not be wrapped in event/data structure?
+		// Our firmware sends raw JSON for backup. `processTelemetry` needs to handle it.
+		// Let's add a "Backup" mode to processTelemetry.
+
+		log.Println("Requesting backup...")
+		sendCommand("backup")
+
+		// We need a way to pass the writer to the telemetry processor...
+		// This is getting complex due to the architecture.
+		// Let's use a global pendingBackupWriter
+
+		pendingBackupWriterMutex.Lock()
+		pendingBackupWriter = writer
+		pendingBackupWriterMutex.Unlock()
+
+		// Show loading?
+		d := dialog.NewInformation("Backup", "Downloading backup from device...", mainWindow)
+		d.Show()
+
+		// The writer will be closed in processTelemetry when data arrives
+		// We should also have a timeout cleanup
+		go func() {
+			time.Sleep(5 * time.Second)
+			pendingBackupWriterMutex.Lock()
+			if pendingBackupWriter != nil {
+				pendingBackupWriter.Close()
+				pendingBackupWriter = nil
+				d.Hide()
+				dialog.ShowError(fmt.Errorf("backup timed out"), mainWindow)
+			} else {
+				d.Hide() // Success (writer was nil-ed)
+			}
+			pendingBackupWriterMutex.Unlock()
+		}()
+
+	}, mainWindow)
+}
+
+func restoreBackupFromFile() {
+	dialog.ShowFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil {
+			dialog.ShowError(err, mainWindow)
+			return
+		}
+		if reader == nil {
+			return
+		}
+		defer reader.Close()
+
+		data, err := io.ReadAll(reader)
+		if err != nil {
+			dialog.ShowError(err, mainWindow)
+			return
+		}
+
+		// Validate JSON
+		var js map[string]interface{}
+		if json.Unmarshal(data, &js) != nil {
+			dialog.ShowError(fmt.Errorf("invalid backup file"), mainWindow)
+			return
+		}
+
+		dialog.ShowConfirm("Restore Backup", "Are you sure you want to restore settings? The device will restart.", func(b bool) {
+			if b {
+				// Send restore command
+				// We need to escape the JSON for sending over serial if it's large?
+				// Actually the firmware expects "restore {json}" or similar?
+				// The firmware code:
+				// } else if (command == "restore") {
+				//   if (!error) {
+				//     RestoreBackupFromJson(doc);
+				// So we send: restore <json_payload>
+
+				// Minify JSON to save space/time
+				minified, _ := json.Marshal(js)
+				sendCommand("restore " + string(minified))
+			}
+		}, mainWindow)
+
+	}, mainWindow)
 }
 
 func saveSettings() {
@@ -543,6 +693,8 @@ func saveSettings() {
 	fyne.Do(func() {
 		UpdateCurvesUI()
 	})
+
+	fyne.CurrentApp().Preferences().SetBool("StartMinimized", minimizeStart.Checked)
 
 	sendCommand("save-settings " + string(payload))
 }
@@ -902,7 +1054,7 @@ func makeCurvesTab() fyne.CanvasObject {
 }
 
 func makeFanSection(id string, title string) fyne.CanvasObject {
-	label := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	label := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true, Underline: true})
 
 	// Common Settings
 	availableSensorsMutex.Lock()
@@ -1606,6 +1758,25 @@ func processTelemetry(jsonStr string) {
 					}
 				})
 			}
+		}
+
+		// Try Backup Response
+		// It has "settings", "fans", "rgb" keys
+		if strings.Contains(jsonStr, `"settings"`) && strings.Contains(jsonStr, `"fans"`) && strings.Contains(jsonStr, `"rgb"`) {
+			pendingBackupWriterMutex.Lock()
+			if pendingBackupWriter != nil {
+				log.Println("Received backup data, writing to file...")
+				_, err := pendingBackupWriter.Write([]byte(jsonStr))
+				if err != nil {
+					log.Printf("Error writing backup: %v", err)
+				}
+				pendingBackupWriter.Close()
+				pendingBackupWriter = nil
+				fyne.Do(func() {
+					dialog.ShowInformation("Backup", "Backup saved successfully!", mainWindow)
+				})
+			}
+			pendingBackupWriterMutex.Unlock()
 		}
 	}
 }

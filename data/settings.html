@@ -96,8 +96,16 @@
         <input type="hidden" id="force_reboot" name="force_reboot" value="true">
         <input type="hidden" id="offline_mode" name="offline_mode" value="true">
 
-        <button type="submit" style="grid-column: 2;">Save</button>
       </form>
+      <button type="submit" style="grid-column: 2;" onclick="$('#wifi-form').submit();">Save</button>
+      <hr>
+      <h1>Backup & Restore</h1>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button id="backup" style="background-color: #007bff;">Download Backup</button>
+        <button id="restore_btn" style="background-color: #28a745;">Restore Backup</button>
+        <input type="file" id="restore_file" style="display: none;" accept=".json">
+      </div>
+
       <hr>
       <button id="reset" style="background-color: red">Factory Reset</button>
     </div>
@@ -205,6 +213,48 @@
             }
           });
         }
+      });
+
+      $('#backup').click(function () {
+        window.location.href = '/backup';
+      });
+
+      $('#restore_btn').click(function () {
+        $('#restore_file').click();
+      });
+
+      $('#restore_file').change(function (e) {
+        var file = e.target.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var contents = e.target.result;
+          try {
+            JSON.parse(contents); // Validate JSON
+          } catch (e) {
+            alert("Invalid JSON file!");
+            return;
+          }
+
+          if (confirm("Are you sure you want to restore settings from this backup? The device will restart.")) {
+            $.ajax({
+              url: '/restore',
+              type: 'POST',
+              data: { config: contents },
+              success: function (response) {
+                alert('Backup restored successfully! The device is restarting.');
+                window.location.href = '/';
+              },
+              error: function (xhr, status, error) {
+                alert('Restore failed: ' + xhr.responseText);
+              }
+            });
+          }
+        };
+        reader.readAsText(file);
+        // Reset file input so same file can be selected again
+        $('#restore_file').val('');
       });
 
       $('#mqtt_enable').click(function () {
