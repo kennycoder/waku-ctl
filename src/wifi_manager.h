@@ -7,5 +7,6 @@
 void InitializeWifi();
 void ScanWifiNetworks(JsonDocument& doc); // Helper for the /networks endpoint
 void InitializeNtpTime();
+void SetAPMode();
 
 #endif // WIFI_MANAGER_H

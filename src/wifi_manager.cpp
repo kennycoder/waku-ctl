@@ -2,6 +2,8 @@
 #include <esp_wifi.h> // Used for mpdu_rx_disable android workaround
 
 void InitializeWifi() {
+    uint8_t retries = 0;
+
     if (systemSettings.setup_done && !systemSettings.offline_mode) {
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // ESP32 specific to clear previous static IP config
         WiFi.mode(WIFI_STA);
@@ -14,38 +16,55 @@ void InitializeWifi() {
         oledDisplay.display();
 
         // Original loop from main.cpp:
-        while (WiFi.status() != WL_CONNECTED) {
+        while (WiFi.status() != WL_CONNECTED && retries < 20) {
             delay(500);
             Serial.print(".");
             oledDisplay.print(".");
             oledDisplay.display();
+            retries++;
         }
 
-        Serial.println("\nWiFi connected.");
-        Serial.print("IP address: ");
-        Serial.println(WiFi.localIP());
+        if (retries < 20) {
+            Serial.println("\nWiFi connected.");
+            Serial.print("IP address: ");
+            Serial.println(WiFi.localIP());
+        } else {
+            for (int i = 0; i < 3; i++) {
+                tone(PIN_BUZZER, 2500, 166);
+                vTaskDelay(pdMS_TO_TICKS(166));
+            }
+
+            SetAPMode();
+            systemSettings.offline_mode = true;
+            Serial.println("\nWiFi NOT connected.");
+            Serial.print("Defaulting to AP mode");
+            Serial.println(AP_LOCAL_IP);    
+        }
     } else {
-        WiFi.mode(WIFI_AP);
-        WiFi.softAPConfig(AP_LOCAL_IP, AP_GATEWAY_IP, AP_SUBNET_MASK);
-        WiFi.softAP("WaKu-ctl", ""); // Empty password for open AP
-
-        // Android captive portal workaround
-        // This sequence is important for some Android devices to connect to the AP
-        // without "no internet" issues preventing access to the configuration page.
-        esp_wifi_stop();
-        esp_wifi_deinit();
-        wifi_init_config_t my_config = WIFI_INIT_CONFIG_DEFAULT();
-        my_config.ampdu_rx_enable = false; // Key change for compatibility
-        esp_wifi_init(&my_config);
-        esp_wifi_start();
-        // Note: The original code in main.cpp did not re-apply softAPConfig or softAP here.
-        // We are preserving that behavior. If AP issues arise, consider re-applying:
-        // WiFi.softAPConfig(AP_LOCAL_IP, kGatewayIp, kSubnetMask);
-        // WiFi.softAP("WaKu-ctl", "");
-
+        SetAPMode();
         Serial.print("WiFi AP Mode. IP: ");
-        Serial.println(AP_LOCAL_IP);
+        Serial.println(AP_LOCAL_IP);    
     }
+}
+
+void SetAPMode() {
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(AP_LOCAL_IP, AP_GATEWAY_IP, AP_SUBNET_MASK);
+    WiFi.softAP("WaKu-ctl", ""); // Empty password for open AP
+
+    // Android captive portal workaround
+    // This sequence is important for some Android devices to connect to the AP
+    // without "no internet" issues preventing access to the configuration page.
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    wifi_init_config_t my_config = WIFI_INIT_CONFIG_DEFAULT();
+    my_config.ampdu_rx_enable = false; // Key change for compatibility
+    esp_wifi_init(&my_config);
+    esp_wifi_start();
+    // Note: The original code in main.cpp did not re-apply softAPConfig or softAP here.
+    // We are preserving that behavior. If AP issues arise, consider re-applying:
+    // WiFi.softAPConfig(AP_LOCAL_IP, kGatewayIp, kSubnetMask);
+    // WiFi.softAP("WaKu-ctl", "");
 }
 
 void ScanWifiNetworks(JsonDocument& doc) {

@@ -527,8 +527,6 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
         }
         if (m_CurrentFanPwmValues[fan_id] != target.current_rpm) {
           ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.current_rpm);
-          Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id,
-                        target.current_rpm);
           m_CurrentFanPwmValues[fan_id] = target.current_rpm;
         }
 
@@ -536,8 +534,6 @@ void ProcessTemperatureCurvesTask(void *pvParameters) {
         // Ensure it stays at target if not adjusting
         if (m_CurrentFanPwmValues[fan_id] != target.target_rpm) {
           ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, target.target_rpm);
-          Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id,
-                        target.target_rpm);
           m_CurrentFanPwmValues[fan_id] = target.target_rpm;
         }
       }
@@ -603,10 +599,9 @@ void ProcessPIDControllerTask(void *pvParameters) {
       if (m_CurrentFanPwmValues[fan_id] != pwm_val) {
         if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
           Serial.printf("Fan %d setting speed: %d\n", fan_id,
-                        (int)m_PidOutputs[fan_id]);
+                        pwm_val);
         }
         ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, pwm_val);
-        Serial.printf("FAN_%d: Setting PWM to %d\n", fan_id, pwm_val);
         m_CurrentFanPwmValues[fan_id] = pwm_val;
       }
     }
@@ -868,46 +863,54 @@ void SaveSettingsFromJson(const JsonVariant &json) {
 
   // Check for changes requiring reboot
   bool needs_reboot = false;
-  if (root.containsKey("offline_mode")) {
+  if (root["offline_mode"].is<bool>()) {
     bool new_offline = root["offline_mode"];
     if (systemSettings.offline_mode != new_offline)
       needs_reboot = true;
     systemSettings.offline_mode = new_offline;
   }
 
-  if (root.containsKey("ssid"))
-    systemSettings.ssid = root["ssid"].as<String>();
-  if (root.containsKey("password"))
-    systemSettings.password = root["password"].as<String>();
-  if (root.containsKey("hostname"))
+  if (root["ssid"].is<const char*>()) {
+    String new_ssid = root["ssid"].as<String>();
+    if (systemSettings.ssid != new_ssid)
+      needs_reboot = true;
+    systemSettings.ssid = new_ssid;
+  }
+  if (root["password"].is<const char*>()) {
+    String new_password = root["password"].as<String>();
+    if (systemSettings.password != new_password)
+      needs_reboot = true;
+    systemSettings.password = new_password;
+  }
+  if (root["hostname"].is<const char*>())
     systemSettings.hostname = root["hostname"].as<String>();
   systemSettings.setup_done = true;
 
-  if (root.containsKey("tel_itv"))
+  if (root["tel_itv"].is<int>())
     systemSettings.telemetry_interval = root["tel_itv"];
-  if (root.containsKey("units"))
+  if (root["units"].is<const char*>())
     systemSettings.units = root["units"].as<String>();
-  if (root.containsKey("mqtt_enable"))
+  if (root["mqtt_enable"].is<bool>())
     systemSettings.mqtt_enable = root["mqtt_enable"];
-  if (root.containsKey("mqtt_username"))
+  if (root["mqtt_username"].is<const char*>())
     systemSettings.mqtt_username = root["mqtt_username"].as<String>();
-  if (root.containsKey("mqtt_password"))
+  if (root["mqtt_password"].is<const char*>())
     systemSettings.mqtt_password = root["mqtt_password"].as<String>();
-  if (root.containsKey("mqtt_topic"))
+  if (root["mqtt_topic"].is<const char*>())
     systemSettings.mqtt_topic = root["mqtt_topic"].as<String>();
-  if (root.containsKey("mqtt_broker"))
+  if (root["mqtt_broker"].is<const char*>())
     systemSettings.mqtt_broker = root["mqtt_broker"].as<String>();
-  if (root.containsKey("mqtt_port"))
+  if (root["mqtt_port"].is<int>())
     systemSettings.mqtt_port = root["mqtt_port"];
-  if (root.containsKey("fan_passthrough"))
+  if (root["fan_passthrough"].is<int>())
     systemSettings.fan_passthrough = root["fan_passthrough"];
-  if (root.containsKey("screen_rotation"))
+  if (root["screen_rotation"].is<int>())
     systemSettings.screen_rotation = root["screen_rotation"];
 
   SaveConfig(systemSettings);
 
   if (needs_reboot ||
-      (root.containsKey("force_reboot") && root["force_reboot"].as<bool>())) {
+      (root["force_reboot"].is<bool>() && root["force_reboot"].as<bool>())) {
     Serial.println("Settings saved via Serial, rebooting...");
     delay(500);
     esp_restart();
@@ -962,13 +965,13 @@ String GenerateBackupJsonString() {
 }
 
 void RestoreBackupFromJson(const JsonVariant &json) {
-  if (json.containsKey("settings")) {
+  if (json["settings"].is<JsonObject>()) {
     SaveSettingsFromJson(json["settings"]);
   }
-  if (json.containsKey("fans")) {
+  if (json["fans"].is<JsonObject>()) {
     SaveFanCurvesFromJson(json["fans"]);
   }
-  if (json.containsKey("rgb")) {
+  if (json["rgb"].is<JsonObject>()) {
     SaveRgbFromJson(json["rgb"]);
   }
 }
