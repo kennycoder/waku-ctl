@@ -47,6 +47,8 @@ void DisplayDataTask(void *pvParameters);
 void NativeUsbTelemetryTask(void *pvParameters);
 void PlayAlarmsTask(void *pvParameters);
 
+String GenerateSettingsJsonString(bool hidePassword = false);
+
 // Telemetry
 std::string PrepareTelemetryPayload(const std::string &event = "default");
 String GenerateSensorsJson();
@@ -836,10 +838,10 @@ void SaveFanCurvesFromJson(const JsonVariant &json) {
               5, &gProcessPIDControllerTaskHandle);
 }
 
-String GenerateSettingsJsonString() {
+String GenerateSettingsJsonString(bool hidePassword) {
   JsonDocument doc;
   doc["ssid"] = systemSettings.ssid;
-  doc["password"] = systemSettings.password;
+  doc["password"] = hidePassword ? "<redacted>" : systemSettings.password;
   doc["hostname"] = systemSettings.hostname;
   doc["tel_itv"] = systemSettings.telemetry_interval;
   doc["setup_done"] = systemSettings.setup_done;
