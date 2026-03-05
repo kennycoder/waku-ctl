@@ -140,6 +140,11 @@
             fan_data['FAN_2']['pid_d'] = $('#pid_d-FAN_2').val();
             fan_data['FAN_3']['pid_d'] = $('#pid_d-FAN_3').val();
 
+            fan_data['FAN_0']['min_duty'] = Math.round($('#min_duty-FAN_0').val() * 2.55);
+            fan_data['FAN_1']['min_duty'] = Math.round($('#min_duty-FAN_1').val() * 2.55);
+            fan_data['FAN_2']['min_duty'] = Math.round($('#min_duty-FAN_2').val() * 2.55);
+            fan_data['FAN_3']['min_duty'] = Math.round($('#min_duty-FAN_3').val() * 2.55);
+
             fan_data['FAN_0']['temp_th'] = $('#temp_th-FAN_0').val();
             fan_data['FAN_1']['temp_th'] = $('#temp_th-FAN_1').val();
             fan_data['FAN_2']['temp_th'] = $('#temp_th-FAN_2').val();
@@ -222,6 +227,7 @@
           const pid_kp = fanData['pid_kp'];
           const pid_ki = fanData['pid_ki'];
           const pid_kd = fanData['pid_kd'];
+          const min_duty = fanData['min_duty'] !== undefined ? Math.round(fanData['min_duty'] / 2.55) : 20;
           let pid_setpoint = fanData['pid_setpoint'];
 
           if (units == "F") {
@@ -301,8 +307,8 @@
           const tabsContainer = $(`
             <div id="tabs-${key}" class="tabs">
               <ul>
-                <li><a href="#tab-curve-${key}" class="` + (mode == 0 ? 'active' : '') + `">Temperature Curve (${fanLabelOverride})</a></li>
-                <li><a href="#tab-pid-${key}" class="` + (mode == 1 ? 'active' : '') + `">PID Control (FAN_${fanLabelOverride})</a></li>
+                <li><a href="#tab-curve-${key}" class="` + (mode == 0 ? 'active' : '') + `">Temperature Curve Mode (${fanLabelOverride})</a></li>
+                <li><a href="#tab-pid-${key}" class="` + (mode == 1 ? 'active' : '') + `">PID Control Mode (${fanLabelOverride})</a></li>
               </ul>
               <div id="tab-curve-${key}" class="tab-content ` + (mode == 0 ? 'active' : '') + `"></div>
               <div id="tab-pid-${key}" class="tab-content ` + (mode == 1 ? 'active' : '') + `"></div>
@@ -400,7 +406,9 @@
               <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0">Correction Strength²:</label>
               <input type="number" id="pid_ki-${key}" step="0.1" value="${pid_ki || 0.1}" min="0.0" max="10.0">
               <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0">Stability³:</label>
-              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0">              
+              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0">
+              <label for="min_duty-${key}" title="Minimum Duty Cycle (%): The minimum speed the fan will run at when the PID controller is active. Default is 20%.">Minimum Duty Cycle (%):</label>
+              <input type="number" id="min_duty-${key}" step="1" value="${min_duty}" min="0" max="100">
             </div>
             <span style="font-size: 0.8em; opacity: 70%; grid-column: 1 / -1;"">
               ¹ Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0<br/>

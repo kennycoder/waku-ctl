@@ -198,19 +198,55 @@ DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl.REP
 DItemRevisionGUID=
 
 [GeneratedDocument6]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_NPTH_Drill.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_drillmap.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument7]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Paste_Top.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_gbl.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument8]
-DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Profile.gbr
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_gbo.gbr
 DItemRevisionGUID=
 
 [GeneratedDocument9]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_gbs.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument10]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_gtl.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument11]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_gto.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument12]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_gts.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument13]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_NPTH_Drill.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument14]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_paste_bottom.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument15]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Paste_Top.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument16]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_Profile.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument17]
 DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_PTH_Drill.gbr
+DItemRevisionGUID=
+
+[GeneratedDocument18]
+DocumentPath=Project Outputs for waku-ctl-board\GerberX2\waku-ctl_xln.gbr
 DItemRevisionGUID=
 
 [Configuration1]

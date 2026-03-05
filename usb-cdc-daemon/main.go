@@ -102,6 +102,7 @@ type FanConfig struct {
 	PidKi       float64         `json:"pid_ki"`
 	PidKd       float64         `json:"pid_kd"`
 	PidSetpoint float64         `json:"pid_setpoint"`
+	MinDuty     int             `json:"min_duty"`
 	Curves      []FanCurvePoint `json:"curves"`
 }
 
@@ -992,6 +993,7 @@ var fanWidgets map[string]struct {
 	PidKpEntry     *widget.Entry
 	PidKiEntry     *widget.Entry
 	PidKdEntry     *widget.Entry
+	MinDutyEntry   *widget.Entry
 	// Curves (pointers to entries/sliders)
 	CurvePoints []struct {
 		TempSlider *widget.Slider
@@ -1015,6 +1017,7 @@ func makeCurvesTab() fyne.CanvasObject {
 		PidKpEntry       *widget.Entry
 		PidKiEntry       *widget.Entry
 		PidKdEntry       *widget.Entry
+		MinDutyEntry     *widget.Entry
 		CurvePoints      []struct {
 			TempSlider *widget.Slider
 			FanSlider  *widget.Slider
@@ -1084,6 +1087,7 @@ func copyFanConfig(srcID, dstID string) {
 	dstW.PidKpEntry.SetText(srcW.PidKpEntry.Text)
 	dstW.PidKiEntry.SetText(srcW.PidKiEntry.Text)
 	dstW.PidKdEntry.SetText(srcW.PidKdEntry.Text)
+	dstW.MinDutyEntry.SetText(srcW.MinDutyEntry.Text)
 
 	// Curves
 	for i := 0; i < len(srcW.CurvePoints) && i < len(dstW.CurvePoints); i++ {
@@ -1207,12 +1211,15 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 	pidKi.SetText("0.1")
 	pidKd := widget.NewEntry()
 	pidKd.SetText("0.5")
+	minDuty := widget.NewEntry()
+	minDuty.SetText("20")
 
 	pidContainer.Add(widget.NewForm(
 		widget.NewFormItem("Target Temp", pidTarget),
 		widget.NewFormItem("Kp (Reaction)", pidKp),
 		widget.NewFormItem("Ki (Correction)", pidKi),
 		widget.NewFormItem("Kd (Stability)", pidKd),
+		widget.NewFormItem("Min Duty (%)", minDuty),
 	))
 	pidContainer.Hide() // Default hidden
 
@@ -1241,6 +1248,7 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 		PidKpEntry       *widget.Entry
 		PidKiEntry       *widget.Entry
 		PidKdEntry       *widget.Entry
+		MinDutyEntry     *widget.Entry
 		CurvePoints      []struct {
 			TempSlider *widget.Slider
 			FanSlider  *widget.Slider
@@ -1260,6 +1268,7 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 		PidKpEntry:       pidKp,
 		PidKiEntry:       pidKi,
 		PidKdEntry:       pidKd,
+		MinDutyEntry:     minDuty,
 		CurvePoints:      curvePoints,
 	}
 
@@ -1322,6 +1331,9 @@ func saveCurves() {
 		fmt.Sscanf(w.PidKpEntry.Text, "%f", &cfg.PidKp)
 		fmt.Sscanf(w.PidKiEntry.Text, "%f", &cfg.PidKi)
 		fmt.Sscanf(w.PidKdEntry.Text, "%f", &cfg.PidKd)
+		var minDutyPercent int
+		fmt.Sscanf(w.MinDutyEntry.Text, "%d", &minDutyPercent)
+		cfg.MinDuty = int(float64(minDutyPercent) * 2.55)
 
 		// Curves
 		for _, p := range w.CurvePoints {
@@ -1475,6 +1487,9 @@ func UpdateCurvesUI() {
 		}
 		if w.PidKdEntry != nil {
 			w.PidKdEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKd))
+		}
+		if w.MinDutyEntry != nil {
+			w.MinDutyEntry.SetText(fmt.Sprintf("%d", int(float64(cfg.MinDuty)/2.55)))
 		}
 
 		// Curves

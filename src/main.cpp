@@ -169,6 +169,7 @@ void InitializeFanCurves() {
       m_SensorSettings[fan_id].pid_kp = 2;
       m_SensorSettings[fan_id].pid_ki = 5;
       m_SensorSettings[fan_id].pid_kd = 1;
+      m_SensorSettings[fan_id].min_duty = 51;
 
       fan_doc["sensor"] = m_SensorSettings[fan_id].sensor_id;
       fan_doc["curves"] = fan_doc.to<JsonArray>();
@@ -186,6 +187,7 @@ void InitializeFanCurves() {
       fan_doc["pid_ki"] = m_SensorSettings[fan_id].pid_ki;
       fan_doc["pid_kd"] = m_SensorSettings[fan_id].pid_kd;
       fan_doc["pid_setpoint"] = m_SensorSettings[fan_id].pid_setpoint;
+      fan_doc["min_duty"] = m_SensorSettings[fan_id].min_duty;
 
       String settings_json;
       serializeJson(fan_doc, settings_json);
@@ -205,6 +207,12 @@ void InitializeFanCurves() {
       m_SensorSettings[fan_id].pid_kd = fan_doc["pid_kd"].as<double>();
       m_SensorSettings[fan_id].pid_setpoint =
           fan_doc["pid_setpoint"].as<double>();
+      if(fan_doc["min_duty"].is<uint8_t>()) {
+        m_SensorSettings[fan_id].min_duty = fan_doc["min_duty"].as<uint8_t>();
+      } else {
+        m_SensorSettings[fan_id].min_duty = 51;
+      }
+      
       m_SensorSettings[fan_id].fan_speed_curve.clear();
       for (auto const &setting : fan_doc["curves"].as<JsonArray>()) {
         m_SensorSettings[fan_id].fan_speed_curve.push_back(
@@ -569,7 +577,8 @@ void ProcessPIDControllerTask(void *pvParameters) {
           new PID(input, output, pidSetpoints[fan_id], settings.pid_kp,
                   settings.pid_ki, settings.pid_kd, REVERSE);
       pidControllers[fan_id]->SetMode(AUTOMATIC);
-      pidControllers[fan_id]->SetOutputLimits(77, 255); // ~30% duty cycle
+      // Use configured minimum duty cycle
+      pidControllers[fan_id]->SetOutputLimits(settings.min_duty, 255);
     }
   }
 
@@ -783,6 +792,7 @@ String GenerateFanCurvesJsonString() {
     doc[fkey]["pid_ki"] = value.pid_ki;
     doc[fkey]["pid_kd"] = value.pid_kd;
     doc[fkey]["pid_setpoint"] = value.pid_setpoint;
+    doc[fkey]["min_duty"] = value.min_duty;
     JsonArray curves = doc[fkey]["curves"].to<JsonArray>();
     for (const auto &setting : value.fan_speed_curve) {
       JsonObject point = curves.add<JsonObject>();
@@ -822,6 +832,11 @@ void SaveFanCurvesFromJson(const JsonVariant &json) {
       m_SensorSettings[fan_id].pid_kd = fan_data["pid_kd"].as<double>();
       m_SensorSettings[fan_id].pid_setpoint =
           fan_data["pid_setpoint"].as<double>();
+      if (fan_data["min_duty"].is<uint8_t>()) {
+        m_SensorSettings[fan_id].min_duty = fan_data["min_duty"].as<uint8_t>();
+      } else {
+        m_SensorSettings[fan_id].min_duty = 51;
+      }
       m_SensorSettings[fan_id].fan_speed_curve.clear();
       for (const auto &setting : fan_data["curves"].as<JsonArray>()) {
         m_SensorSettings[fan_id].fan_speed_curve.push_back(
@@ -1445,6 +1460,7 @@ void InitializeHttpServer() {
       doc[fkey]["pid_ki"] = value.pid_ki;
       doc[fkey]["pid_kd"] = value.pid_kd;
       doc[fkey]["pid_setpoint"] = value.pid_setpoint;
+      doc[fkey]["min_duty"] = value.min_duty;
       JsonArray curves = doc[fkey]["curves"].to<JsonArray>();
       for (const auto &setting : value.fan_speed_curve) {
         JsonObject point = curves.add<JsonObject>();
@@ -1519,6 +1535,11 @@ void InitializeHttpServer() {
         m_SensorSettings[fan_id].pid_kd = fan_doc["pid_kd"].as<double>();
         m_SensorSettings[fan_id].pid_setpoint =
             fan_doc["pid_setpoint"].as<double>();
+        if (fan_doc["min_duty"].is<uint8_t>()) {
+          m_SensorSettings[fan_id].min_duty = fan_doc["min_duty"].as<uint8_t>();
+        } else {
+          m_SensorSettings[fan_id].min_duty = 51;
+        }
         m_SensorSettings[fan_id].fan_speed_curve.clear();
         for (const auto &setting : fan_doc["curves"].as<JsonArray>()) {
           m_SensorSettings[fan_id].fan_speed_curve.push_back(

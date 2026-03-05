@@ -50,6 +50,7 @@ struct TemperatureSensorSettings {
   double pid_ki = 5;
   double pid_kd = 1;
   double pid_setpoint = 40.0;
+  uint8_t min_duty = 51; // ~20%
   std::vector<FanSpeedPoint> fan_speed_curve;
 };
 
