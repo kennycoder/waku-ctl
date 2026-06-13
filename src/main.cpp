@@ -9,7 +9,6 @@
 #include <Ticker.h>
 #include <esp_wifi.h> // Used for mpdu_rx_disable android workaround
 
-
 enum {
   TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP = 1u << 5,
   TUSB_DESC_CONFIG_ATT_SELF_POWERED = 1u << 6,
@@ -128,8 +127,6 @@ void InitializeTasks() {
   xTaskCreate(ProcessPIDControllerTask, "ProcessPIDControllerTask", 4096, NULL,
               6, &gProcessPIDControllerTaskHandle);
   xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 5, NULL);
-  // xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4,
-  //             NULL);
   xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
   xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 4096, NULL, 2, NULL);
   xTaskCreate(PlayAlarmsTask, "PlayAlarms", 4096, NULL, tskIDLE_PRIORITY, NULL);
@@ -207,12 +204,12 @@ void InitializeFanCurves() {
       m_SensorSettings[fan_id].pid_kd = fan_doc["pid_kd"].as<double>();
       m_SensorSettings[fan_id].pid_setpoint =
           fan_doc["pid_setpoint"].as<double>();
-      if(fan_doc["min_duty"].is<uint8_t>()) {
+      if (fan_doc["min_duty"].is<uint8_t>()) {
         m_SensorSettings[fan_id].min_duty = fan_doc["min_duty"].as<uint8_t>();
       } else {
         m_SensorSettings[fan_id].min_duty = 51;
       }
-      
+
       m_SensorSettings[fan_id].fan_speed_curve.clear();
       for (auto const &setting : fan_doc["curves"].as<JsonArray>()) {
         m_SensorSettings[fan_id].fan_speed_curve.push_back(
@@ -609,8 +606,7 @@ void ProcessPIDControllerTask(void *pvParameters) {
       int pwm_val = (int)m_PidOutputs[fan_id];
       if (m_CurrentFanPwmValues[fan_id] != pwm_val) {
         if (DEBUG_ENABLED && DEBUG_DATA_ENABLED) {
-          Serial.printf("Fan %d setting speed: %d\n", fan_id,
-                        pwm_val);
+          Serial.printf("Fan %d setting speed: %d\n", fan_id, pwm_val);
         }
         ledcWrite(PIN_FAN_MAP[fan_id].pwm_pin, pwm_val);
         m_CurrentFanPwmValues[fan_id] = pwm_val;
@@ -887,35 +883,35 @@ void SaveSettingsFromJson(const JsonVariant &json) {
     systemSettings.offline_mode = new_offline;
   }
 
-  if (root["ssid"].is<const char*>()) {
+  if (root["ssid"].is<const char *>()) {
     String new_ssid = root["ssid"].as<String>();
     if (systemSettings.ssid != new_ssid)
       needs_reboot = true;
     systemSettings.ssid = new_ssid;
   }
-  if (root["password"].is<const char*>()) {
+  if (root["password"].is<const char *>()) {
     String new_password = root["password"].as<String>();
     if (systemSettings.password != new_password)
       needs_reboot = true;
     systemSettings.password = new_password;
   }
-  if (root["hostname"].is<const char*>())
+  if (root["hostname"].is<const char *>())
     systemSettings.hostname = root["hostname"].as<String>();
   systemSettings.setup_done = true;
 
   if (root["tel_itv"].is<int>())
     systemSettings.telemetry_interval = root["tel_itv"];
-  if (root["units"].is<const char*>())
+  if (root["units"].is<const char *>())
     systemSettings.units = root["units"].as<String>();
   if (root["mqtt_enable"].is<bool>())
     systemSettings.mqtt_enable = root["mqtt_enable"];
-  if (root["mqtt_username"].is<const char*>())
+  if (root["mqtt_username"].is<const char *>())
     systemSettings.mqtt_username = root["mqtt_username"].as<String>();
-  if (root["mqtt_password"].is<const char*>())
+  if (root["mqtt_password"].is<const char *>())
     systemSettings.mqtt_password = root["mqtt_password"].as<String>();
-  if (root["mqtt_topic"].is<const char*>())
+  if (root["mqtt_topic"].is<const char *>())
     systemSettings.mqtt_topic = root["mqtt_topic"].as<String>();
-  if (root["mqtt_broker"].is<const char*>())
+  if (root["mqtt_broker"].is<const char *>())
     systemSettings.mqtt_broker = root["mqtt_broker"].as<String>();
   if (root["mqtt_port"].is<int>())
     systemSettings.mqtt_port = root["mqtt_port"];
@@ -1068,7 +1064,8 @@ void NativeUsbTelemetryTask(void *pvParameters) {
             } else if (command == "restore") {
               if (!error) {
                 RestoreBackupFromJson(doc);
-                USBTelemetryPort.println("{\"status\": \"restored_restarting\"}");
+                USBTelemetryPort.println(
+                    "{\"status\": \"restored_restarting\"}");
                 delay(500);
                 esp_restart();
               } else {
@@ -1475,8 +1472,8 @@ void InitializeHttpServer() {
 
   // API: Backup
   webServer.on("/backup", HTTP_GET, [](AsyncWebServerRequest *request) {
-    AsyncWebServerResponse *response =
-        request->beginResponse(200, "application/json", GenerateBackupJsonString());
+    AsyncWebServerResponse *response = request->beginResponse(
+        200, "application/json", GenerateBackupJsonString());
     response->addHeader("Content-Disposition",
                         "attachment; filename=\"waku-ctl-backup.json\"");
     request->send(response);
