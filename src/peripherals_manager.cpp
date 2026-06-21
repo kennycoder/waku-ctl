@@ -276,10 +276,10 @@ int CalculateFanSpeed(int fan_id, float temperature) {
   // Find the first threshold the temperature is below or equal to
   for (const auto &point : curve) {
     if (temperature <= point.temperature_threshold) {
-      return point.fan_duty_cycle;
+      return std::min(point.fan_duty_cycle, (int)it->second.max_duty);
     }
   }
 
   // If temp is higher than all thresholds, use the last (highest) speed
-  return curve.back().fan_duty_cycle;
+  return std::min(curve.back().fan_duty_cycle, (int)it->second.max_duty);
 }

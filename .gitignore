@@ -13,5 +13,4 @@ pcb/Backup-Full-Board
 
 usb-cdc-daemon/waku-ctl-manager.tar.xz
 usb-cdc-daemon/waku-ctl-manager.exe
-
-usb-cdc-daemon-cpp
+usb-cdc-daemon/waku-ctl-manager
