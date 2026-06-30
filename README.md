@@ -10,7 +10,7 @@ This project contains the hardware and software for the waku-ctl device.
 
 If you find waku-ctl useful, please consider supporting its development through a small donation. Your support will help grow the project and bring new features to life!
 
-## How to get an assembled boar
+## How to get an assembled board
 
 I'm happy to assemble a board for you for a fee, just drop me a message via email at me[at]nikolai[dot]one.
 
