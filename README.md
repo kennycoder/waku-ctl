@@ -8,7 +8,7 @@ This project contains the hardware and software for the waku-ctl device.
 
 ## Support the Project
 
-If you find waku-ctl useful, please consider supporting its development through my Kickstarter campaign. Your support will help grow the project and bring new features to life!
+If you find waku-ctl useful, please consider supporting its development through a small donation. Your support will help grow the project and bring new features to life!
 
 ## How to get an assembled boar
 

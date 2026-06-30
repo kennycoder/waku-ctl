@@ -406,7 +406,13 @@ void MonitorButtonTask(void *pvParameters) {
 }
 
 void MonitorStatesTask(void *pvParameters) {
+  unsigned long task_start_time = millis();
+  bool boot_delay_completed = false;
   while (true) {
+    if (!boot_delay_completed && millis() - task_start_time > 3000) {
+      boot_delay_completed = true;
+    }
+
     // --- Monitor Alarms ---
     bool temp_alarm_active = false;
     bool rpm_alarm_active = false;
@@ -431,8 +437,9 @@ void MonitorStatesTask(void *pvParameters) {
                         temp);
       }
 
-      // RPM Alarm (only if threshold is set, > 0)
-      if (settings.rpm_alarm_threshold >= 0 &&
+      // RPM Alarm (only if threshold is set, >= 0, and 3 seconds have passed since boot)
+      if (boot_delay_completed &&
+          settings.rpm_alarm_threshold >= 0 &&
           current_rpm < (unsigned long)settings.rpm_alarm_threshold) {
         if (settings.halt_on == HALT_ON_ALARM_FAN ||
             settings.halt_on == HALT_ON_ALARM_BOTH) {
