@@ -52,6 +52,15 @@
         <input type="checkbox" id="screen_rotation_check" name="screen_rotation_check" value="2"
           style="width: min-content;">
         <input type="hidden" id="screen_rotation" name="screen_rotation" value="0">
+        <label for="current_screen" style="margin: 0; font-weight: bold;">Active Screen:</label>
+        <select id="current_screen" style="margin: 0; width: 180px; padding-right: 30px;">
+          <option value="0">Overview</option>
+          <option value="1">Temperatures</option>
+          <option value="2">Fans</option>
+          <option value="3">RGB</option>
+          <option value="4">Big Temp</option>
+        </select>
+
 
         <h1>Fan setup</h1>
         <hr style="grid-column: 1 / -1;">
@@ -97,7 +106,19 @@
         <input type="hidden" id="offline_mode" name="offline_mode" value="true">
 
       </form>
-      <button type="submit" style="grid-column: 2;" onclick="$('#wifi-form').submit();">Save</button>
+      <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+        <button type="submit" id="save-btn" onclick="$('#wifi-form').submit();" disabled>Save</button>
+        <span id="save-disabled-info"
+          style="color: #666; font-size: 0.9em; display: flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2196f3" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; animation: spin 2s linear infinite;">
+            <circle cx="12" cy="12" r="10" stroke="#ccc" stroke-width="2" opacity="0.3"></circle>
+            <path d="M22 12a10 10 0 0 0-10-10"></path>
+          </svg>
+          Scanning WiFi networks, please wait...
+        </span>
+      </div>
+
       <hr>
       <h1>Backup & Restore</h1>
       <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -138,7 +159,20 @@
     }
 
     $(document).ready(function () {
+      function checkSaveButtonStatus() {
+        var networkSelect = $('#ssid');
+        var options = networkSelect.find('option');
+        if (options.length === 1 && options.first().text() === "Scanning your WiFi networks, please wait..") {
+          $('#save-btn').prop('disabled', true);
+          $('#save-disabled-info').show();
+        } else {
+          $('#save-btn').prop('disabled', false);
+          $('#save-disabled-info').hide();
+        }
+      }
+
       toggleMQTTElements(); // disable fields until everything is loaded
+      checkSaveButtonStatus();
 
       // Fetch WiFi networks on page load
       $.ajax({
@@ -163,6 +197,8 @@
             }));
           });
 
+          checkSaveButtonStatus();
+
           $.ajax({
             url: '/get-settings',
             type: 'GET',
@@ -183,6 +219,7 @@
               $('#fan_passthrough').val(data.fan_passthrough);
               $('#screen_rotation_check').prop('checked', data.screen_rotation == 2);
               $('#screen_rotation').val(data.screen_rotation);
+              $('#current_screen').val(data.current_screen);
               toggleMQTTElements();
             }
           });
@@ -276,6 +313,10 @@
       $('#wifi-form').submit(function (event) {
         event.preventDefault(); // Prevent default form submission
 
+        if ($('#save-btn').prop('disabled')) {
+          return false;
+        }
+
         $.ajax({
           url: '/save-settings',
           type: 'POST',
@@ -296,6 +337,21 @@
           }
         });
       });
+
+      $('#current_screen').change(function () {
+        var val = $(this).val();
+        $.ajax({
+          url: '/set-screen?val=' + val,
+          type: 'GET',
+          success: function (response) {
+            console.log("Screen changed to " + val);
+          },
+          error: function (error) {
+            console.log('Failed to change screen: ' + error.responseText);
+          }
+        });
+      });
+
     });
 
   </script>

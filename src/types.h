@@ -5,10 +5,9 @@
 #include <string>
 #include <vector>
 
-
 // --- Enums ---
 enum class LedChannel { Internal, External };
-enum class ScreenView { Overview, Temperatures, Fans, Rgb };
+enum class ScreenView { Overview, Temperatures, Fans, Rgb, BigTemp };
 
 // --- Structs ---
 struct Settings {
@@ -31,6 +30,7 @@ struct Settings {
 
   int8_t fan_passthrough = 0;
   uint8_t screen_rotation = 0;
+  uint8_t current_screen = 0;
 };
 
 struct FanSpeedPoint {
@@ -50,7 +50,7 @@ struct TemperatureSensorSettings {
   double pid_ki = 5;
   double pid_kd = 1;
   double pid_setpoint = 40.0;
-  uint8_t min_duty = 51; // ~20%
+  uint8_t min_duty = 51;  // ~20%
   uint8_t max_duty = 255; // 100%
   std::vector<FanSpeedPoint> fan_speed_curve;
 };

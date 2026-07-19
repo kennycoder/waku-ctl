@@ -83,6 +83,8 @@ void InitializeConfig() {
   systemSettings.offline_mode = systemPreferences.getBool("offline_mode", true);
   systemSettings.units = systemPreferences.getString("units", "C");
   systemSettings.screen_rotation = systemPreferences.getUChar("screen_rot", 0);
+  systemSettings.current_screen = systemPreferences.getUChar("curr_screen", 0);
+  currentScreen = static_cast<ScreenView>(systemSettings.current_screen);
 
   systemSettings.mqtt_broker =
       systemPreferences.getString("mqtt_broker", "broker.emqx.io");
@@ -117,6 +119,7 @@ void SaveConfig(const Settings &s) {
   systemPreferences.putInt("mqtt_port", s.mqtt_port);
   systemPreferences.putInt("fan_passthrough", s.fan_passthrough);
   systemPreferences.putUChar("screen_rot", s.screen_rotation);
+  systemPreferences.putUChar("curr_screen", s.current_screen);
   Serial.println("Settings saved.");
 }
 
@@ -299,9 +302,11 @@ void RunPostSetup() {
   Serial.println("Running Post-Setup...");
   InitializeMqttClient();
   // InitializeNtpTime(); // Optional, not used for now
+
+  // Make LEDs start immediately, before wifi connects
+  InitializeLeds();
   InitializeAdc();
   InitializeFanCurves();
-  InitializeLeds();
   InitializeTasks();
   b_BootCompleted = true;
   Serial.println("Post-Setup Complete.");
@@ -396,7 +401,7 @@ void MonitorButtonTask(void *pvParameters) {
           Serial.println("Reset button released. Cycling screen.");
           // Cycle through screens
           int current_view_int = static_cast<int>(currentScreen);
-          current_view_int = (current_view_int + 1) % 4; // 4 screens total
+          current_view_int = (current_view_int + 1) % 5; // 5 screens total
           currentScreen = static_cast<ScreenView>(current_view_int);
         }
       }
@@ -437,9 +442,9 @@ void MonitorStatesTask(void *pvParameters) {
                         temp);
       }
 
-      // RPM Alarm (only if threshold is set, >= 0, and 3 seconds have passed since boot)
-      if (boot_delay_completed &&
-          settings.rpm_alarm_threshold >= 0 &&
+      // RPM Alarm (only if threshold is set, >= 0, and 3 seconds have passed
+      // since boot)
+      if (boot_delay_completed && settings.rpm_alarm_threshold >= 0 &&
           current_rpm < (unsigned long)settings.rpm_alarm_threshold) {
         if (settings.halt_on == HALT_ON_ALARM_FAN ||
             settings.halt_on == HALT_ON_ALARM_BOTH) {
@@ -589,7 +594,8 @@ void ProcessPIDControllerTask(void *pvParameters) {
                   settings.pid_ki, settings.pid_kd, REVERSE);
       pidControllers[fan_id]->SetMode(AUTOMATIC);
       // Use configured minimum and maximum duty cycle
-      pidControllers[fan_id]->SetOutputLimits(settings.min_duty, settings.max_duty);
+      pidControllers[fan_id]->SetOutputLimits(settings.min_duty,
+                                              settings.max_duty);
     }
   }
 
@@ -711,7 +717,7 @@ void DisplayDataTask(void *pvParameters) {
       oledDisplay.printf("Temp Alarm: %s\n", b_TempAlarmFiring ? "Yes" : "No");
       oledDisplay.printf("RPM Alarm: %s\n", b_RpmAlarmFiring ? "Yes" : "No");
       oledDisplay.setCursor(50, 56);
-      oledDisplay.printf("o...");
+      oledDisplay.printf("o....");
       break;
 
     case ScreenView::Temperatures: {
@@ -733,7 +739,7 @@ void DisplayDataTask(void *pvParameters) {
       }
 
       oledDisplay.setCursor(50, 56);
-      oledDisplay.printf(".o..");
+      oledDisplay.printf(".o...");
     } break;
 
     case ScreenView::Fans:
@@ -743,7 +749,7 @@ void DisplayDataTask(void *pvParameters) {
                            a_CurrentFanSpeedsRpm[fan_id]);
       }
       oledDisplay.setCursor(50, 56);
-      oledDisplay.printf("..o.");
+      oledDisplay.printf("..o..");
       break;
 
     case ScreenView::Rgb:
@@ -774,8 +780,34 @@ void DisplayDataTask(void *pvParameters) {
         oledDisplay.printf("%s: %s\n", fkey.c_str(), led_mode.c_str());
       }
       oledDisplay.setCursor(50, 56);
-      oledDisplay.printf("...o");
+      oledDisplay.printf("...o.");
       break;
+
+    case ScreenView::BigTemp: {
+      oledDisplay.printf(" ### TEMPERATURE ###\n\n");
+
+      for (int i = 0; i < ACTIVE_THERMISTORS; i++) {
+        double t = a_currentTemperatures[i];
+
+        if (systemSettings.units == "F") {
+          if (t > -90.0)
+            t = (t * 1.8) + 32;
+        }
+        String print_t = ((t <= 0 && systemSettings.units == "C") ||
+                          (t <= 32 && systemSettings.units == "F") || isnan(t))
+                             ? "N/A"
+                             : (String(t, 1) + systemSettings.units);
+
+        if (print_t != "N/A") {
+          oledDisplay.setTextSize(4);
+          oledDisplay.printf("%s", print_t);
+          oledDisplay.setTextSize(1);
+        }
+      }
+
+      oledDisplay.setCursor(50, 56);
+      oledDisplay.printf("....o");
+    } break;
     }
 
     oledDisplay.display();
@@ -939,6 +971,8 @@ void SaveSettingsFromJson(const JsonVariant &json) {
     systemSettings.fan_passthrough = root["fan_passthrough"];
   if (root["screen_rotation"].is<int>())
     systemSettings.screen_rotation = root["screen_rotation"];
+  if (root["current_screen"].is<int>())
+    systemSettings.current_screen = root["current_screen"];
 
   SaveConfig(systemSettings);
 
@@ -1301,6 +1335,23 @@ void InitializeHttpServer() {
     StreamFile("/logo.png", "text/image", true, request);
   });
 
+  webServer.on("/set-screen", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("val")) {
+      int val = request->getParam("val")->value().toInt();
+      if (val >= 0 && val < 5) {
+        currentScreen = static_cast<ScreenView>(val);
+        systemSettings.current_screen = val;
+        request->send(200, "application/json",
+                      "{\"status\":\"ok\",\"current_screen\":" + String(val) +
+                          "}");
+        return;
+      }
+    }
+    request->send(
+        400, "application/json",
+        "{\"status\":\"error\",\"message\":\"Invalid screen value\"}");
+  });
+
   // API: Get RGB settings
   webServer.on("/get-rgb", HTTP_GET, [](AsyncWebServerRequest *request) {
     JsonDocument doc;
@@ -1379,6 +1430,7 @@ void InitializeHttpServer() {
     doc["mqtt_port"] = systemSettings.mqtt_port;
     doc["fan_passthrough"] = systemSettings.fan_passthrough;
     doc["screen_rotation"] = systemSettings.screen_rotation;
+    doc["current_screen"] = static_cast<int>(currentScreen);
     String buffer;
     serializeJson(doc, buffer);
     request->send(200, "application/json", buffer);
@@ -1433,6 +1485,9 @@ void InitializeHttpServer() {
     if (request->hasParam("screen_rotation", true))
       systemSettings.screen_rotation =
           request->getParam("screen_rotation", true)->value().toInt();
+    if (request->hasParam("current_screen", true))
+      systemSettings.current_screen =
+          request->getParam("current_screen", true)->value().toInt();
 
     SaveConfig(systemSettings);
     request->send(200, "application/json", "{\"status\": \"settings_saved\"}");
