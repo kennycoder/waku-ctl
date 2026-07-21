@@ -800,6 +800,7 @@ void DisplayDataTask(void *pvParameters) {
 
         if (print_t != "N/A") {
           oledDisplay.setTextSize(4);
+          oledDisplay.setCursor(4, 20);
           oledDisplay.printf("%s", print_t);
           oledDisplay.setTextSize(1);
         }
@@ -918,6 +919,7 @@ String GenerateSettingsJsonString(bool hidePassword) {
   doc["mqtt_port"] = systemSettings.mqtt_port;
   doc["fan_passthrough"] = systemSettings.fan_passthrough;
   doc["screen_rotation"] = systemSettings.screen_rotation;
+  doc["current_screen"] = systemSettings.current_screen;
   String buffer;
   serializeJson(doc, buffer);
   return buffer;
@@ -971,8 +973,10 @@ void SaveSettingsFromJson(const JsonVariant &json) {
     systemSettings.fan_passthrough = root["fan_passthrough"];
   if (root["screen_rotation"].is<int>())
     systemSettings.screen_rotation = root["screen_rotation"];
-  if (root["current_screen"].is<int>())
+  if (root["current_screen"].is<int>()) {
     systemSettings.current_screen = root["current_screen"];
+    currentScreen = static_cast<ScreenView>(systemSettings.current_screen);
+  }
 
   SaveConfig(systemSettings);
 
@@ -1131,6 +1135,15 @@ void NativeUsbTelemetryTask(void *pvParameters) {
               String netBuf;
               serializeJson(netDoc, netBuf);
               USBTelemetryPort.println(netBuf);
+            } else if (command == "set-screen") {
+              int val = payload.toInt();
+              if (val >= 0 && val < 5) {
+                currentScreen = static_cast<ScreenView>(val);
+                systemSettings.current_screen = val;
+                USBTelemetryPort.println("{\"status\": \"screen_changed\"}");
+              } else {
+                USBTelemetryPort.println("{\"error\": \"invalid_value\"}");
+              }
             } else {
               USBTelemetryPort.println("{\"error\": \"unknown_command\"}");
             }
@@ -1485,9 +1498,11 @@ void InitializeHttpServer() {
     if (request->hasParam("screen_rotation", true))
       systemSettings.screen_rotation =
           request->getParam("screen_rotation", true)->value().toInt();
-    if (request->hasParam("current_screen", true))
+    if (request->hasParam("current_screen", true)) {
       systemSettings.current_screen =
           request->getParam("current_screen", true)->value().toInt();
+      currentScreen = static_cast<ScreenView>(systemSettings.current_screen);
+    }
 
     SaveConfig(systemSettings);
     request->send(200, "application/json", "{\"status\": \"settings_saved\"}");

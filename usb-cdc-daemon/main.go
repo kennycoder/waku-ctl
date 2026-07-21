@@ -74,6 +74,7 @@ type Settings struct {
 	MqttPort       int    `json:"mqtt_port"`
 	FanPassthrough int    `json:"fan_passthrough"`
 	ScreenRotation int    `json:"screen_rotation"`
+	CurrentScreen  int    `json:"current_screen"`
 }
 
 // LedSettings represents the configuration for an RGB Strip
@@ -109,6 +110,10 @@ type FanConfig struct {
 
 type SensorsResponse struct {
 	Sensors []string `json:"sensors"`
+}
+
+type NetworksResponse struct {
+	Networks []string `json:"networks"`
 }
 
 type sensorRegistryInfo struct {
@@ -168,7 +173,17 @@ var (
 	telItvSelect      *widget.Select
 	fanPassthroughSel *widget.Select
 	screenRotCheck    *widget.Check
+	currentScreenSelect *widget.Select
 	minimizeStart     *widget.Check
+	isUpdatingSettings bool
+
+	// Setup Overlay UI Elements
+	setupOverlay        *fyne.Container
+	setupSsidSelect     *widget.Select
+	setupSsidRefreshBtn *widget.Button
+	setupPasswordEntry  *widget.Entry
+	setupHostnameEntry  *widget.Entry
+	setupUnitsSelect    *widget.Select
 
 	// UI Elements for RGB
 	// Pointers to widgets to update them
@@ -300,7 +315,80 @@ func main() {
 	overlayBg := canvas.NewRectangle(color.NRGBA{R: 0, G: 0, B: 0, A: 180})
 	connectionOverlay = container.NewStack(overlayBg, overlayContent)
 
-	mainStack := container.NewStack(split, connectionOverlay)
+	// Setup Overlay
+	setupSsidSelect = widget.NewSelect([]string{"-- Offline (AP) Mode --"}, nil)
+	setupSsidSelect.SetSelected("-- Offline (AP) Mode --")
+
+	setupSsidRefreshBtn = widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), func() {
+		if setupSsidRefreshBtn != nil {
+			setupSsidRefreshBtn.Disable()
+		}
+		setupSsidSelect.PlaceHolder = "Scanning..."
+		setupSsidSelect.Refresh()
+		sendCommand("networks")
+	})
+
+	setupPasswordEntry = widget.NewPasswordEntry()
+	setupHostnameEntry = widget.NewEntry()
+	setupHostnameEntry.SetText("waku-ctl.local")
+
+	setupUnitsSelect = widget.NewSelect([]string{"C", "F"}, nil)
+	setupUnitsSelect.SetSelected("C")
+
+	setupSsidContainer := container.NewBorder(nil, nil, nil, setupSsidRefreshBtn, setupSsidSelect)
+
+	setupForm := widget.NewForm(
+		widget.NewFormItem("WiFi Network", setupSsidContainer),
+		widget.NewFormItem("WiFi Password", setupPasswordEntry),
+		widget.NewFormItem("Hostname", setupHostnameEntry),
+		widget.NewFormItem("Units", setupUnitsSelect),
+	)
+
+	setupSaveBtn := widget.NewButton("Finish Setup & Connect", func() {
+		s := Settings{}
+		if setupSsidSelect.Selected == "-- Offline (AP) Mode --" || setupSsidSelect.Selected == "" {
+			s.SSID = ""
+			s.OfflineMode = true
+		} else {
+			s.SSID = setupSsidSelect.Selected
+			s.OfflineMode = false
+		}
+		s.Password = setupPasswordEntry.Text
+		s.Hostname = setupHostnameEntry.Text
+		s.Units = setupUnitsSelect.Selected
+		s.TelemetryItv = 30000
+		s.SetupDone = true
+
+		payload, err := json.Marshal(s)
+		if err != nil {
+			dialog.ShowError(err, mainWindow)
+			return
+		}
+
+		settingsMutex.Lock()
+		currentSettings = s
+		settingsMutex.Unlock()
+
+		fyne.Do(func() {
+			UpdateCurvesUI()
+			UpdateSettingsUI()
+		})
+
+		sendCommand("save-settings " + string(payload))
+	})
+
+	setupCardContent := container.NewVBox(
+		setupForm,
+		layout.NewSpacer(),
+		setupSaveBtn,
+	)
+	setupCard := widget.NewCard("WiFi Setup", "Configure your WaKu Controller", setupCardContent)
+	setupCardContainer := container.NewCenter(container.NewGridWrap(fyne.NewSize(450, 350), setupCard))
+	setupOverlayBg := canvas.NewRectangle(color.NRGBA{R: 0, G: 0, B: 0, A: 220})
+	setupOverlay = container.NewStack(setupOverlayBg, setupCardContainer)
+	setupOverlay.Hide()
+
+	mainStack := container.NewStack(split, setupOverlay, connectionOverlay)
 	w.SetContent(mainStack)
 	w.Resize(fyne.NewSize(900, 600)) // Increased size for wider menu
 	w.SetFixedSize(true)             // Non-resizable
@@ -467,6 +555,27 @@ func makeSettingsTab() fyne.CanvasObject {
 	fanPassthroughSel = widget.NewSelect([]string{"FAN_PUMP", "FAN_1", "FAN_2", "FAN_3", "None"}, nil)
 
 	screenRotCheck = widget.NewCheck("Flip Display 180°", nil)
+	currentScreenSelect = widget.NewSelect([]string{"Overview", "Temperatures", "Fans", "RGB", "Big Temp"}, func(selected string) {
+		if isUpdatingSettings {
+			return
+		}
+		val := 0
+		switch selected {
+		case "Overview":
+			val = 0
+		case "Temperatures":
+			val = 1
+		case "Fans":
+			val = 2
+		case "RGB":
+			val = 3
+		case "Big Temp":
+			val = 4
+		}
+		sendCommand(fmt.Sprintf("set-screen %d", val))
+	})
+	currentScreenSelect.SetSelected("Overview")
+
 	minimizeStart = widget.NewCheck("Start Minimized", nil)
 	minimizeStart.SetChecked(fyne.CurrentApp().Preferences().Bool("StartMinimized"))
 
@@ -505,6 +614,7 @@ func makeSettingsTab() fyne.CanvasObject {
 		widget.NewFormItem("Fan Passthrough", fanPassthroughSel),
 		widget.NewFormItem("Display Setup", layout.NewSpacer()),
 		widget.NewFormItem("", screenRotCheck),
+		widget.NewFormItem("Active Screen", currentScreenSelect),
 		widget.NewFormItem("App Settings", layout.NewSpacer()),
 		widget.NewFormItem("", minimizeStart),
 		widget.NewFormItem("MQTT Setup", layout.NewSpacer()), // Divider equivalent
@@ -672,6 +782,21 @@ func saveSettings() {
 		s.ScreenRotation = 0
 	}
 
+	switch currentScreenSelect.Selected {
+	case "Overview":
+		s.CurrentScreen = 0
+	case "Temperatures":
+		s.CurrentScreen = 1
+	case "Fans":
+		s.CurrentScreen = 2
+	case "RGB":
+		s.CurrentScreen = 3
+	case "Big Temp":
+		s.CurrentScreen = 4
+	default:
+		s.CurrentScreen = 0
+	}
+
 	s.MqttEnable = mqttEnableCheck.Checked
 	s.MqttBroker = mqttBrokerEntry.Text
 	s.MqttTopic = mqttTopicEntry.Text
@@ -829,6 +954,9 @@ func UpdateSettingsUI() {
 	s := currentSettings
 	settingsMutex.Unlock()
 
+	isUpdatingSettings = true
+	defer func() { isUpdatingSettings = false }()
+
 	if ssidEntry != nil {
 		ssidEntry.SetText(s.SSID)
 	}
@@ -863,6 +991,23 @@ func UpdateSettingsUI() {
 
 	if screenRotCheck != nil {
 		screenRotCheck.SetChecked(s.ScreenRotation == 2)
+	}
+
+	if currentScreenSelect != nil {
+		switch s.CurrentScreen {
+		case 0:
+			currentScreenSelect.SetSelected("Overview")
+		case 1:
+			currentScreenSelect.SetSelected("Temperatures")
+		case 2:
+			currentScreenSelect.SetSelected("Fans")
+		case 3:
+			currentScreenSelect.SetSelected("RGB")
+		case 4:
+			currentScreenSelect.SetSelected("Big Temp")
+		default:
+			currentScreenSelect.SetSelected("Overview")
+		}
 	}
 
 	if mqttEnableCheck != nil {
@@ -1719,6 +1864,29 @@ func findDeviceComPort(vid, pid string) (string, error) {
 	return "", fmt.Errorf("waku controller device with VID %s and PID %s not found", vid, pid)
 }
 
+func checkSetupState() {
+	settingsMutex.Lock()
+	setupDone := currentSettings.SetupDone
+	settingsMutex.Unlock()
+
+	fyne.Do(func() {
+		if !setupDone {
+			setupOverlay.Show()
+			if len(setupSsidSelect.Options) <= 1 {
+				if setupSsidRefreshBtn != nil {
+					setupSsidRefreshBtn.Disable()
+				}
+				setupSsidSelect.PlaceHolder = "Scanning..."
+				setupSsidSelect.Refresh()
+				sendCommand("networks")
+			}
+		} else {
+			setupOverlay.Hide()
+		}
+		setupOverlay.Refresh()
+	})
+}
+
 func processTelemetry(jsonStr string) {
 	var telemetry TelemetryData
 	err := json.Unmarshal([]byte(jsonStr), &telemetry)
@@ -1813,6 +1981,24 @@ func processTelemetry(jsonStr string) {
 			}
 		}
 
+		// Try Networks list
+		if strings.Contains(jsonStr, `"networks"`) {
+			var networks NetworksResponse
+			if err := json.Unmarshal([]byte(jsonStr), &networks); err == nil && len(networks.Networks) > 0 {
+				log.Printf("Received Networks list: %v", networks.Networks)
+				options := []string{"-- Offline (AP) Mode --"}
+				options = append(options, networks.Networks...)
+				fyne.Do(func() {
+					setupSsidSelect.Options = options
+					setupSsidSelect.PlaceHolder = "Select WiFi Network"
+					setupSsidSelect.Refresh()
+					if setupSsidRefreshBtn != nil {
+						setupSsidRefreshBtn.Enable()
+					}
+				})
+			}
+		}
+
 		if strings.Contains(jsonStr, `"ssid"`) {
 			// Try Settings
 			var settings Settings
@@ -1827,6 +2013,7 @@ func processTelemetry(jsonStr string) {
 
 				fyne.Do(func() {
 					UpdateSettingsUI()
+					checkSetupState()
 				})
 			}
 		}
