@@ -93,10 +93,10 @@ func main() {
 
 	http.HandleFunc("/get-curves", func(w http.ResponseWriter, r *http.Request) {
 		noCacheHeaders(w)
-		fmt.Fprintf(w, `{"FAN_0": {"mode": 1, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
-			"FAN_1": {"mode": 0, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
-			"FAN_2": {"mode": 1, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
-			"FAN_3": {"mode": 0, "units": "C", "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}}`)
+		fmt.Fprintf(w, `{"FAN_0": {"mode": 1, "units": "C", "pid_kp": 1.6, "pid_ki": 1.8, "pid_kd": 0.1, "pid_setpoint": 35.0, "min_duty": 51, "max_duty": 255, "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_1": {"mode": 0, "units": "C", "pid_kp": 1.2, "pid_ki": 1.2, "pid_kd": 0.08, "pid_setpoint": 30.0, "min_duty": 51, "max_duty": 255, "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_2": {"mode": 1, "units": "C", "pid_kp": 2.0, "pid_ki": 2.0, "pid_kd": 0.2, "pid_setpoint": 40.0, "min_duty": 51, "max_duty": 255, "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}, 
+			"FAN_3": {"mode": 0, "units": "C", "pid_kp": 1.2, "pid_ki": 0.0, "pid_kd": 0.0, "pid_setpoint": 30.0, "min_duty": 51, "max_duty": 255, "curves": [{"temp": 30, "fan": 20}, {"temp": 33, "fan": 40}, {"temp": 36, "fan": 60}, {"temp": 39, "fan": 80}, {"temp": 42, "fan": 100}], "sensor": "TEMP_1"}}`)
 	})
 
 	http.HandleFunc("/get-rgb", func(w http.ResponseWriter, r *http.Request) {

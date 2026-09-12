@@ -120,26 +120,6 @@
             fan_data['FAN_2']['sensor'] = $('#sensor_id-FAN_2').val();
             fan_data['FAN_3']['sensor'] = $('#sensor_id-FAN_3').val();
 
-            fan_data['FAN_0']['pid_target'] = $('#pid_target-FAN_0').val();
-            fan_data['FAN_1']['pid_target'] = $('#pid_target-FAN_1').val();
-            fan_data['FAN_2']['pid_target'] = $('#pid_target-FAN_2').val();
-            fan_data['FAN_3']['pid_target'] = $('#pid_target-FAN_3').val();
-
-            fan_data['FAN_0']['pid_p'] = $('#pid_p-FAN_0').val();
-            fan_data['FAN_1']['pid_p'] = $('#pid_p-FAN_1').val();
-            fan_data['FAN_2']['pid_p'] = $('#pid_p-FAN_2').val();
-            fan_data['FAN_3']['pid_p'] = $('#pid_p-FAN_3').val();
-
-            fan_data['FAN_0']['pid_i'] = $('#pid_i-FAN_0').val();
-            fan_data['FAN_1']['pid_i'] = $('#pid_i-FAN_1').val();
-            fan_data['FAN_2']['pid_i'] = $('#pid_i-FAN_2').val();
-            fan_data['FAN_3']['pid_i'] = $('#pid_i-FAN_3').val();
-
-            fan_data['FAN_0']['pid_d'] = $('#pid_d-FAN_0').val();
-            fan_data['FAN_1']['pid_d'] = $('#pid_d-FAN_1').val();
-            fan_data['FAN_2']['pid_d'] = $('#pid_d-FAN_2').val();
-            fan_data['FAN_3']['pid_d'] = $('#pid_d-FAN_3').val();
-
             fan_data['FAN_0']['min_duty'] = Math.round($('#min_duty-FAN_0').val() * 2.55);
             fan_data['FAN_1']['min_duty'] = Math.round($('#min_duty-FAN_1').val() * 2.55);
             fan_data['FAN_2']['min_duty'] = Math.round($('#min_duty-FAN_2').val() * 2.55);
@@ -229,9 +209,9 @@
           const units = fanData['units'];
           const mode = fanData['mode'];
 
-          const pid_kp = fanData['pid_kp'];
-          const pid_ki = fanData['pid_ki'];
-          const pid_kd = fanData['pid_kd'];
+          const pid_kp = (fanData['pid_kp'] !== undefined && fanData['pid_kp'] !== null && fanData['pid_kp'] !== "") ? parseFloat(fanData['pid_kp']) : 1.6;
+          const pid_ki = (fanData['pid_ki'] !== undefined && fanData['pid_ki'] !== null && fanData['pid_ki'] !== "") ? parseFloat(fanData['pid_ki']) : 1.8;
+          const pid_kd = (fanData['pid_kd'] !== undefined && fanData['pid_kd'] !== null && fanData['pid_kd'] !== "") ? parseFloat(fanData['pid_kd']) : 0.1;
           const min_duty = fanData['min_duty'] !== undefined ? Math.round(fanData['min_duty'] / 2.55) : 20;
           const max_duty = fanData['max_duty'] !== undefined ? Math.round(fanData['max_duty'] / 2.55) : 100;
           let pid_setpoint = fanData['pid_setpoint'];
@@ -337,6 +317,12 @@
             // Handle content
             $(`#tabs-${key} .tab-content`).removeClass('active');
             $(target).addClass('active');
+
+            if (target.includes('pid')) {
+              setTimeout(() => {
+                $(`#tab-pid-${key}`).trigger('redraw-pid');
+              }, 50);
+            }
           });
 
           const controlsContainer = $('<div>').addClass('chart-controls-container form-grid').attr('id', `chart-controls-${key}`);
@@ -404,27 +390,359 @@
           $('#tab-curve-' + key).append(chartContainer);
 
           const pidControlsContainer = $(`
-            <div class="pid-controls form-grid" id="pid-controls-${key}" style="display: grid; gap: 15px 10px; min-height: 290px;">
-              <label for="pid_target-${key}">Target Temperature (°${units}):</label>
-              <input type="number" id="pid_setpoint-${key}" value="${pid_setpoint || 30}">
-              <label for="pid_p-${key}" title="Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0">Reaction Speed¹:</label>
-              <input type="number" id="pid_kp-${key}" step="0.1" value="${pid_kp || 1.0}" min="0.1" max="10.0">
-              <label for="pid_i-${key}" title="Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0">Correction Strength²:</label>
-              <input type="number" id="pid_ki-${key}" step="0.1" value="${pid_ki || 0.1}" min="0.0" max="10.0">
-              <label for="pid_d-${key}" title="Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0">Stability³:</label>
-              <input type="number" id="pid_kd-${key}" step="0.1" value="${pid_kd || 0.5}" min="0.0" max="10.0">
-              <label for="min_duty-${key}" title="Minimum Duty Cycle (%): The minimum speed the fan will run at when the PID controller is active. Default is 20%.">Minimum Duty Cycle (%):</label>
-              <input type="number" id="min_duty-${key}" step="1" value="${min_duty}" min="0" max="100">
-              <label for="max_duty-${key}" title="Maximum Duty Cycle (%): The maximum speed the fan will run at when the PID controller is active. Default is 100%.">Maximum Duty Cycle (%):</label>
-              <input type="number" id="max_duty-${key}" step="1" value="${max_duty}" min="0" max="100">
+            <div class="pid-sim-widget" id="pid-sim-widget-${key}">
+              <!-- Section 1: Controller Parameters -->
+              <div class="pid-sim-section">
+                <div class="pid-section-header">
+                  <div class="pid-section-title">
+                    <span class="pid-chevron">&#8964;</span> Controller parameters
+                  </div>
+                  <div class="pid-header-actions">
+                    <select class="pid-select-control" id="pid_presets-${key}" title="Choose tuning preset">
+                      <option value="custom">Presets</option>
+                      <option value="conservative">Conservative</option>
+                      <option value="balanced">Balanced</option>
+                      <option value="aggressive">Aggressive</option>
+                      <option value="p-only">P only</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Sliders for Kp, Ki, Kd -->
+                <div class="pid-slider-group">
+                  <div class="pid-slider-row">
+                    <span class="pid-slider-label" title="Proportional (Reaction Speed)">Kp</span>
+                    <div class="pid-slider-track-wrap">
+                      <input type="range" class="pid-slider" id="pid_kp_slider-${key}" min="0" max="5.0" step="0.01" value="${pid_kp}">
+                    </div>
+                    <input type="number" class="pid-value-badge" id="pid_kp-${key}" step="0.01" min="0" max="10.0" value="${pid_kp}">
+                  </div>
+
+                  <div class="pid-slider-row">
+                    <span class="pid-slider-label" title="Integral (Correction Strength)">Ki</span>
+                    <div class="pid-slider-track-wrap">
+                      <input type="range" class="pid-slider" id="pid_ki_slider-${key}" min="0" max="5.0" step="0.01" value="${pid_ki}">
+                    </div>
+                    <input type="number" class="pid-value-badge" id="pid_ki-${key}" step="0.01" min="0" max="10.0" value="${pid_ki}">
+                  </div>
+
+                  <div class="pid-slider-row">
+                    <span class="pid-slider-label" title="Derivative (Stability / Dampening)">Kd</span>
+                    <div class="pid-slider-track-wrap">
+                      <input type="range" class="pid-slider" id="pid_kd_slider-${key}" min="0" max="1.0" step="0.01" value="${pid_kd}">
+                    </div>
+                    <input type="number" class="pid-value-badge" id="pid_kd-${key}" step="0.01" min="0" max="10.0" value="${pid_kd}">
+                  </div>
+                </div>
+
+                <!-- Fan hardware settings -->
+                <div class="pid-hardware-params">
+                  <div class="pid-hw-item">
+                    <label for="pid_setpoint-${key}">Target Temp (°${units}):</label>
+                    <input type="number" id="pid_setpoint-${key}" value="${pid_setpoint || 30}">
+                  </div>
+                  <div class="pid-hw-item">
+                    <label for="min_duty-${key}">Min Duty Cycle (%):</label>
+                    <input type="number" id="min_duty-${key}" step="1" value="${min_duty}" min="0" max="100">
+                  </div>
+                  <div class="pid-hw-item">
+                    <label for="max_duty-${key}">Max Duty Cycle (%):</label>
+                    <input type="number" id="max_duty-${key}" step="1" value="${max_duty}" min="0" max="100">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 2: Output Simulation -->
+              <div class="pid-sim-section">
+                <div class="pid-section-header">
+                  <div class="pid-section-title">
+                    <span class="pid-chevron">&#8964;</span> Output
+                  </div>
+                </div>
+
+                <!-- Simulation Canvas -->
+                <div class="pid-canvas-container">
+                  <canvas id="pid_canvas-${key}" height="250"></canvas>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="pid-kpis">
+                  <div class="pid-kpi setpoint">
+                    <div class="pid-kpi-label">Setpoint</div>
+                    <div class="pid-kpi-value" id="pid_kpi_setpoint-${key}">${pid_setpoint || 30} °${units}</div>
+                  </div>
+                  <div class="pid-kpi current">
+                    <div class="pid-kpi-label">Current value</div>
+                    <div class="pid-kpi-value" id="pid_kpi_current-${key}">0.0 °${units}</div>
+                  </div>
+                  <div class="pid-kpi error">
+                    <div class="pid-kpi-label">Error</div>
+                    <div class="pid-kpi-value" id="pid_kpi_error-${key}">0.0 °${units}</div>
+                  </div>
+                  <div class="pid-kpi response">
+                    <div class="pid-kpi-label">Response time</div>
+                    <div class="pid-kpi-value" id="pid_kpi_response-${key}">-</div>
+                  </div>
+                </div>
+
+                <div class="pid-info-help">
+                  <strong>Kp (Reaction Speed):</strong> Proportional gain. How quickly the fan ramps up in response to temperature changes.<br/>
+                  <strong>Ki (Correction Strength):</strong> Integral gain. Eliminates persistent temperature error over time.<br/>
+                  <strong>Kd (Stability):</strong> Derivative gain. Dampens sudden surges to prevent overshoot and temperature hunting.
+                </div>
+              </div>
             </div>
-            <span style="font-size: 0.8em; opacity: 70%; grid-column: 1 / -1;"">
-              ¹ Proportional (Kp): How strongly the fan reacts to the current temperature difference. Higher values mean a stronger reaction. Range: 0.1 - 10.0<br/>
-              ² Integral (Ki): Corrects for small, steady-state temperature errors over time. Helps eliminate temperature drift. Range: 0.0 - 10.0"<br/>
-              ³ Derivative (Kd): Predicts future temperature changes and dampens the fan's reaction to prevent overshooting the target. Range: 0.0 - 10.0<br/>
-            </span>            
           `);
           $('#tab-pid-' + key).append(pidControlsContainer);
+
+          // PID Simulator Engine for this fan
+          const pidPresets = {
+            conservative: { kp: 1.2, ki: 1.2, kd: 0.08 },
+            balanced:     { kp: 1.6, ki: 1.8, kd: 0.10 },
+            aggressive:   { kp: 2.0, ki: 2.0, kd: 0.20 },
+            'p-only':     { kp: 1.2, ki: 0.0, kd: 0.00 }
+          };
+
+          function detectPreset(k, i, d) {
+            for (const name in pidPresets) {
+              const p = pidPresets[name];
+              if (Math.abs(p.kp - k) < 0.02 && Math.abs(p.ki - i) < 0.02 && Math.abs(p.kd - d) < 0.015) {
+                return name;
+              }
+            }
+            return 'custom';
+          }
+
+          function renderPidSim() {
+            const canvas = document.getElementById(`pid_canvas-${key}`);
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const w = (rect.width > 0) ? rect.width : (canvas.parentElement.clientWidth || 600);
+            const h = 250;
+            const dpr = window.devicePixelRatio || 1;
+
+            if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+              canvas.width = Math.round(w * dpr);
+              canvas.height = Math.round(h * dpr);
+            }
+
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            // Clear background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+
+            // Grid lines
+            ctx.strokeStyle = "#f1f5f9";
+            ctx.lineWidth = 1;
+            const numHoriz = 5;
+            for (let g = 1; g <= numHoriz; g++) {
+              const y = (h / (numHoriz + 1)) * g;
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(w, y);
+              ctx.stroke();
+            }
+
+            // Baseline
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, h - 1);
+            ctx.lineTo(w, h - 1);
+            ctx.stroke();
+
+            // Read current parameters
+            const kVal = parseFloat($(`#pid_kp-${key}`).val()) || 0;
+            const iVal = parseFloat($(`#pid_ki-${key}`).val()) || 0;
+            const dVal = parseFloat($(`#pid_kd-${key}`).val()) || 0;
+            const targetSp = parseFloat($(`#pid_setpoint-${key}`).val()) || 30;
+
+            // Discrete plant simulation (First-order system with pure delay)
+            const processK = 1.5;
+            const processTimeConstant = 20;
+            const processDelay = 5;
+            const alpha = -Math.exp(-1 / processTimeConstant);
+            const beta = processK * (1 + alpha);
+            const totalSteps = 400;
+            const stepChange = 50;
+            const dt = 0.05;
+
+            let curVal = 0;
+            let lastIn = 0;
+            let iTerm = 0;
+            let outBuf = [];
+            for (let b = 0; b < processDelay + 10; b++) {
+              outBuf.push(0);
+            }
+
+            const setpoints = [];
+            const values = [];
+            let respTime = 0;
+            let respDetected = false;
+            let lastSp = 0;
+            let changeStep = 0;
+
+            for (let s = 0; s < totalSteps; s++) {
+              const sp = (s < stepChange) ? 0 : targetSp;
+              if (sp !== lastSp) {
+                changeStep = s;
+                respDetected = false;
+                lastSp = sp;
+              }
+
+              // PID with derivative on measurement and anti-windup
+              const err = sp - curVal;
+              const pPart = kVal * err;
+              const dPart = -dVal * ((curVal - lastIn) / dt);
+              lastIn = curVal;
+
+              iTerm += iVal * err * dt;
+              const tot = pPart + iTerm + dPart;
+              const maxOut = (targetSp > 0) ? (targetSp / processK) * 2.0 : 100;
+              const sat = Math.max(-maxOut, Math.min(maxOut, tot));
+
+              // Anti-windup back-calculation
+              const diff = sat - tot;
+              iTerm += dt * 1.0 * diff;
+              iTerm = Math.max(-1e6, Math.min(1e6, iTerm));
+
+              outBuf.push(sat);
+              if (outBuf.length > processDelay + 20) {
+                outBuf.shift();
+              }
+
+              const delayed = (outBuf.length > processDelay) ? outBuf[outBuf.length - processDelay - 1] : 0;
+              curVal = delayed * beta - curVal * alpha;
+              curVal = Math.max(0, curVal);
+
+              setpoints.push(sp);
+              values.push(curVal);
+
+              // 2% settling criterion
+              if (!respDetected && sp > 0 && Math.abs(curVal - sp) <= (0.02 * sp)) {
+                respTime = (s - changeStep) * dt;
+                respDetected = true;
+              }
+            }
+
+            // Draw Setpoint (blue dashed)
+            const maxGraphVal = Math.max(targetSp * 1.35, 10);
+            ctx.strokeStyle = "#2563eb";
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            const stepX = w / (totalSteps - 1);
+            const scaleY = h / maxGraphVal;
+            for (let s = 0; s < totalSteps; s++) {
+              const x = s * stepX;
+              const y = h - (setpoints[s] * scaleY);
+              if (s === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw Current value (green solid)
+            ctx.strokeStyle = "#16a34a";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            for (let s = 0; s < totalSteps; s++) {
+              const x = s * stepX;
+              const y = h - (values[s] * scaleY);
+              if (s === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Legend labels
+            ctx.font = "600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            ctx.fillStyle = "#2563eb";
+            ctx.fillText(`--- Setpoint (${targetSp}°${units})`, 20, 26);
+            ctx.fillStyle = "#16a34a";
+            ctx.fillText("— Current value", 20, 48);
+
+            // Simulation time
+            ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            ctx.fillStyle = "#64748b";
+            ctx.fillText("Total time: 20.0s", 20, h - 12);
+
+            ctx.restore();
+
+            // Update KPI cards
+            const finalSp = targetSp;
+            const finalVal = values[values.length - 1];
+            const finalErr = finalVal - finalSp;
+
+            $(`#pid_kpi_setpoint-${key}`).text(`${finalSp} °${units}`);
+            $(`#pid_kpi_current-${key}`).text(`${finalVal.toFixed(1)} °${units}`);
+            const errStr = (finalErr >= 0 ? "+" : "") + finalErr.toFixed(1);
+            $(`#pid_kpi_error-${key}`).text((errStr === "+0.0" || errStr === "-0.0" ? "-0.0" : errStr) + ` °${units}`);
+            $(`#pid_kpi_response-${key}`).text(respDetected ? (respTime.toFixed(2) + " s") : "> 20 s");
+          }
+
+          // Preset dropdown change
+          $(`#pid_presets-${key}`).on('change', function() {
+            const pName = $(this).val();
+            if (pidPresets[pName]) {
+              const p = pidPresets[pName];
+              $(`#pid_kp-${key}`).val(p.kp.toFixed(2));
+              $(`#pid_kp_slider-${key}`).val(p.kp);
+              $(`#pid_ki-${key}`).val(p.ki.toFixed(2));
+              $(`#pid_ki_slider-${key}`).val(p.ki);
+              $(`#pid_kd-${key}`).val(p.kd.toFixed(2));
+              $(`#pid_kd_slider-${key}`).val(p.kd);
+              renderPidSim();
+            }
+          });
+
+          // Slider change
+          function syncSlider(param, val) {
+            $(`#pid_${param}-${key}`).val(parseFloat(val).toFixed(2));
+            const k = parseFloat($(`#pid_kp-${key}`).val()) || 0;
+            const i = parseFloat($(`#pid_ki-${key}`).val()) || 0;
+            const d = parseFloat($(`#pid_kd-${key}`).val()) || 0;
+            $(`#pid_presets-${key}`).val(detectPreset(k, i, d));
+            renderPidSim();
+          }
+
+          $(`#pid_kp_slider-${key}`).on('input', function() { syncSlider('kp', $(this).val()); });
+          $(`#pid_ki_slider-${key}`).on('input', function() { syncSlider('ki', $(this).val()); });
+          $(`#pid_kd_slider-${key}`).on('input', function() { syncSlider('kd', $(this).val()); });
+
+          // Direct input change
+          function syncInput(param, val) {
+            $(`#pid_${param}_slider-${key}`).val(val);
+            const k = parseFloat($(`#pid_kp-${key}`).val()) || 0;
+            const i = parseFloat($(`#pid_ki-${key}`).val()) || 0;
+            const d = parseFloat($(`#pid_kd-${key}`).val()) || 0;
+            $(`#pid_presets-${key}`).val(detectPreset(k, i, d));
+            renderPidSim();
+          }
+
+          $(`#pid_kp-${key}`).on('input change', function() { syncInput('kp', $(this).val()); });
+          $(`#pid_ki-${key}`).on('input change', function() { syncInput('ki', $(this).val()); });
+          $(`#pid_kd-${key}`).on('input change', function() { syncInput('kd', $(this).val()); });
+
+          // Target Temp input change
+          $(`#pid_setpoint-${key}`).on('input change', function() {
+            renderPidSim();
+          });
+
+          // Initial preset detect and render
+          $(`#pid_presets-${key}`).val(detectPreset(pid_kp, pid_ki, pid_kd));
+          setTimeout(renderPidSim, 60);
+
+          // Event listeners for tab activation and window resize
+          $(`#tab-pid-${key}`).on('redraw-pid', renderPidSim);
+          $(window).on('resize', function() {
+            if ($(`#tab-pid-${key}`).hasClass('active')) {
+              renderPidSim();
+            }
+          });
 
           fanContainer.append(controlsContainer);
 

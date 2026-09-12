@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -159,23 +160,23 @@ var (
 	pendingBackupWriterMutex sync.Mutex
 
 	// UI Elements for Settings
-	ssidEntry         *widget.Entry
-	passwordEntry     *widget.Entry
-	hostnameEntry     *widget.Entry
-	unitsSelect       *widget.Select
-	offlineCheck      *widget.Check
-	mqttEnableCheck   *widget.Check
-	mqttBrokerEntry   *widget.Entry
-	mqttTopicEntry    *widget.Entry
-	mqttUserEntry     *widget.Entry
-	mqttPassEntry     *widget.Entry
-	mqttPortEntry     *widget.Entry
-	telItvSelect      *widget.Select
-	fanPassthroughSel *widget.Select
-	screenRotCheck    *widget.Check
+	ssidEntry           *widget.Entry
+	passwordEntry       *widget.Entry
+	hostnameEntry       *widget.Entry
+	unitsSelect         *widget.Select
+	offlineCheck        *widget.Check
+	mqttEnableCheck     *widget.Check
+	mqttBrokerEntry     *widget.Entry
+	mqttTopicEntry      *widget.Entry
+	mqttUserEntry       *widget.Entry
+	mqttPassEntry       *widget.Entry
+	mqttPortEntry       *widget.Entry
+	telItvSelect        *widget.Select
+	fanPassthroughSel   *widget.Select
+	screenRotCheck      *widget.Check
 	currentScreenSelect *widget.Select
-	minimizeStart     *widget.Check
-	isUpdatingSettings bool
+	minimizeStart       *widget.Check
+	isUpdatingSettings  bool
 
 	// Setup Overlay UI Elements
 	setupOverlay        *fyne.Container
@@ -1124,7 +1125,7 @@ func UpdateRgbUI() {
 
 // --- Curves Tab Implementation ---
 
-var fanWidgets map[string]struct {
+type FanWidgetGroup struct {
 	ModeSegment    *widget.Select
 	CurveContainer *fyne.Container
 	PidContainer   *fyne.Container
@@ -1135,12 +1136,16 @@ var fanWidgets map[string]struct {
 	HaltOnSelect     *widget.Select
 	StepDurSlider    *widget.Slider
 	// PID
-	PidTargetEntry *widget.Entry
-	PidKpEntry     *widget.Entry
-	PidKiEntry     *widget.Entry
-	PidKdEntry     *widget.Entry
-	MinDutyEntry   *widget.Entry
-	MaxDutyEntry   *widget.Entry
+	PidPresetSelect *widget.Select
+	PidTargetEntry  *widget.Entry
+	PidKpEntry      *widget.Entry
+	PidKpSlider     *widget.Slider
+	PidKiEntry      *widget.Entry
+	PidKiSlider     *widget.Slider
+	PidKdEntry      *widget.Entry
+	PidKdSlider     *widget.Slider
+	MinDutyEntry    *widget.Entry
+	MaxDutyEntry    *widget.Entry
 	// Curves (pointers to entries/sliders)
 	CurvePoints []struct {
 		TempSlider *widget.Slider
@@ -1150,36 +1155,17 @@ var fanWidgets map[string]struct {
 	}
 }
 
+var fanWidgets map[string]FanWidgetGroup
+
 func makeCurvesTab() fyne.CanvasObject {
-	fanWidgets = make(map[string]struct {
-		ModeSegment      *widget.Select
-		CurveContainer   *fyne.Container
-		PidContainer     *fyne.Container
-		TempSourceSelect *widget.Select
-		TempAlarmSelect  *widget.Select
-		FanAlarmSelect   *widget.Select
-		HaltOnSelect     *widget.Select
-		StepDurSlider    *widget.Slider
-		PidTargetEntry   *widget.Entry
-		PidKpEntry       *widget.Entry
-		PidKiEntry       *widget.Entry
-		PidKdEntry       *widget.Entry
-		MinDutyEntry     *widget.Entry
-		MaxDutyEntry     *widget.Entry
-		CurvePoints      []struct {
-			TempSlider *widget.Slider
-			FanSlider  *widget.Slider
-			TempLabel  *widget.Label
-			FanLabel   *widget.Label
-		}
-	})
+	fanWidgets = make(map[string]FanWidgetGroup)
 
 	// Initialize default map
 	fanConfigs = make(map[string]FanConfig)
 	for i := 0; i < 4; i++ {
 		fanID := fmt.Sprintf("FAN_%d", i)
 		fanConfigs[fanID] = FanConfig{
-			Units: "C",
+			Units:   "C",
 			MaxDuty: 255,
 			Curves: []FanCurvePoint{
 				{30, 0}, {40, 30}, {50, 60}, {60, 80}, {70, 100},
@@ -1232,10 +1218,22 @@ func copyFanConfig(srcID, dstID string) {
 	dstW.ModeSegment.SetSelected(srcW.ModeSegment.Selected)
 
 	// PID
+	if srcW.PidPresetSelect != nil && dstW.PidPresetSelect != nil {
+		dstW.PidPresetSelect.SetSelected(srcW.PidPresetSelect.Selected)
+	}
 	dstW.PidTargetEntry.SetText(srcW.PidTargetEntry.Text)
 	dstW.PidKpEntry.SetText(srcW.PidKpEntry.Text)
 	dstW.PidKiEntry.SetText(srcW.PidKiEntry.Text)
 	dstW.PidKdEntry.SetText(srcW.PidKdEntry.Text)
+	if srcW.PidKpSlider != nil && dstW.PidKpSlider != nil {
+		dstW.PidKpSlider.SetValue(srcW.PidKpSlider.Value)
+	}
+	if srcW.PidKiSlider != nil && dstW.PidKiSlider != nil {
+		dstW.PidKiSlider.SetValue(srcW.PidKiSlider.Value)
+	}
+	if srcW.PidKdSlider != nil && dstW.PidKdSlider != nil {
+		dstW.PidKdSlider.SetValue(srcW.PidKdSlider.Value)
+	}
 	dstW.MinDutyEntry.SetText(srcW.MinDutyEntry.Text)
 	dstW.MaxDutyEntry.SetText(srcW.MaxDutyEntry.Text)
 
@@ -1353,27 +1351,193 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 
 	// PID Editor
 	pidContainer := container.NewVBox()
+
+	pidPresetSelect := widget.NewSelect([]string{"Presets", "Conservative", "Balanced", "Aggressive", "P only"}, nil)
+	pidPresetSelect.PlaceHolder = "Presets"
+
 	pidTarget := widget.NewEntry()
 	pidTarget.SetText("30")
+
 	pidKp := widget.NewEntry()
-	pidKp.SetText("1.0")
+	pidKp.SetText("1.60")
+	pidKpSlider := widget.NewSlider(0, 5.0)
+	pidKpSlider.Step = 0.01
+	pidKpSlider.SetValue(1.60)
+
 	pidKi := widget.NewEntry()
-	pidKi.SetText("0.1")
+	pidKi.SetText("1.80")
+	pidKiSlider := widget.NewSlider(0, 5.0)
+	pidKiSlider.Step = 0.01
+	pidKiSlider.SetValue(1.80)
+
 	pidKd := widget.NewEntry()
-	pidKd.SetText("0.5")
+	pidKd.SetText("0.10")
+	pidKdSlider := widget.NewSlider(0, 1.0)
+	pidKdSlider.Step = 0.01
+	pidKdSlider.SetValue(0.10)
+
 	minDuty := widget.NewEntry()
 	minDuty.SetText("20")
 	maxDuty := widget.NewEntry()
 	maxDuty.SetText("100")
 
-	pidContainer.Add(widget.NewForm(
+	// Sync logic
+	isInternalPidUpdate := false
+
+	detectPreset := func(k, i, d float64) string {
+		if math.Abs(k-1.2) < 0.05 && math.Abs(i-1.2) < 0.05 && math.Abs(d-0.08) < 0.02 {
+			return "Conservative"
+		} else if math.Abs(k-1.6) < 0.05 && math.Abs(i-1.8) < 0.05 && math.Abs(d-0.10) < 0.02 {
+			return "Balanced"
+		} else if math.Abs(k-2.0) < 0.05 && math.Abs(i-2.0) < 0.05 && math.Abs(d-0.20) < 0.02 {
+			return "Aggressive"
+		} else if math.Abs(k-1.2) < 0.05 && math.Abs(i-0.0) < 0.05 && math.Abs(d-0.00) < 0.02 {
+			return "P only"
+		}
+		return "Presets"
+	}
+
+	pidKpSlider.OnChanged = func(val float64) {
+		if !isInternalPidUpdate {
+			isInternalPidUpdate = true
+			pidKp.SetText(fmt.Sprintf("%.2f", val))
+			var kiVal, kdVal float64
+			fmt.Sscanf(pidKi.Text, "%f", &kiVal)
+			fmt.Sscanf(pidKd.Text, "%f", &kdVal)
+			pidPresetSelect.SetSelected(detectPreset(val, kiVal, kdVal))
+			isInternalPidUpdate = false
+		}
+	}
+	pidKiSlider.OnChanged = func(val float64) {
+		if !isInternalPidUpdate {
+			isInternalPidUpdate = true
+			pidKi.SetText(fmt.Sprintf("%.2f", val))
+			var kpVal, kdVal float64
+			fmt.Sscanf(pidKp.Text, "%f", &kpVal)
+			fmt.Sscanf(pidKd.Text, "%f", &kdVal)
+			pidPresetSelect.SetSelected(detectPreset(kpVal, val, kdVal))
+			isInternalPidUpdate = false
+		}
+	}
+	pidKdSlider.OnChanged = func(val float64) {
+		if !isInternalPidUpdate {
+			isInternalPidUpdate = true
+			pidKd.SetText(fmt.Sprintf("%.2f", val))
+			var kpVal, kiVal float64
+			fmt.Sscanf(pidKp.Text, "%f", &kpVal)
+			fmt.Sscanf(pidKi.Text, "%f", &kiVal)
+			pidPresetSelect.SetSelected(detectPreset(kpVal, kiVal, val))
+			isInternalPidUpdate = false
+		}
+	}
+
+	pidKp.OnChanged = func(text string) {
+		if !isInternalPidUpdate {
+			var v float64
+			if _, err := fmt.Sscanf(text, "%f", &v); err == nil {
+				isInternalPidUpdate = true
+				pidKpSlider.SetValue(v)
+				var kiVal, kdVal float64
+				fmt.Sscanf(pidKi.Text, "%f", &kiVal)
+				fmt.Sscanf(pidKd.Text, "%f", &kdVal)
+				pidPresetSelect.SetSelected(detectPreset(v, kiVal, kdVal))
+				isInternalPidUpdate = false
+			}
+		}
+	}
+	pidKi.OnChanged = func(text string) {
+		if !isInternalPidUpdate {
+			var v float64
+			if _, err := fmt.Sscanf(text, "%f", &v); err == nil {
+				isInternalPidUpdate = true
+				pidKiSlider.SetValue(v)
+				var kpVal, kdVal float64
+				fmt.Sscanf(pidKp.Text, "%f", &kpVal)
+				fmt.Sscanf(pidKd.Text, "%f", &kdVal)
+				pidPresetSelect.SetSelected(detectPreset(kpVal, v, kdVal))
+				isInternalPidUpdate = false
+			}
+		}
+	}
+	pidKd.OnChanged = func(text string) {
+		if !isInternalPidUpdate {
+			var v float64
+			if _, err := fmt.Sscanf(text, "%f", &v); err == nil {
+				isInternalPidUpdate = true
+				pidKdSlider.SetValue(v)
+				var kpVal, kiVal float64
+				fmt.Sscanf(pidKp.Text, "%f", &kpVal)
+				fmt.Sscanf(pidKi.Text, "%f", &kiVal)
+				pidPresetSelect.SetSelected(detectPreset(kpVal, kiVal, v))
+				isInternalPidUpdate = false
+			}
+		}
+	}
+
+	pidPresetSelect.OnChanged = func(selected string) {
+		if isInternalPidUpdate {
+			return
+		}
+		isInternalPidUpdate = true
+		switch selected {
+		case "Conservative":
+			pidKp.SetText("1.20")
+			pidKpSlider.SetValue(1.20)
+			pidKi.SetText("1.20")
+			pidKiSlider.SetValue(1.20)
+			pidKd.SetText("0.08")
+			pidKdSlider.SetValue(0.08)
+		case "Balanced":
+			pidKp.SetText("1.60")
+			pidKpSlider.SetValue(1.60)
+			pidKi.SetText("1.80")
+			pidKiSlider.SetValue(1.80)
+			pidKd.SetText("0.10")
+			pidKdSlider.SetValue(0.10)
+		case "Aggressive":
+			pidKp.SetText("2.00")
+			pidKpSlider.SetValue(2.00)
+			pidKi.SetText("2.00")
+			pidKiSlider.SetValue(2.00)
+			pidKd.SetText("0.20")
+			pidKdSlider.SetValue(0.20)
+		case "P only":
+			pidKp.SetText("1.20")
+			pidKpSlider.SetValue(1.20)
+			pidKi.SetText("0.00")
+			pidKiSlider.SetValue(0.00)
+			pidKd.SetText("0.00")
+			pidKdSlider.SetValue(0.00)
+		}
+		isInternalPidUpdate = false
+	}
+
+	sliderWidth := float32(200)
+	entryWidth := float32(60)
+
+	kpRow := container.NewHBox(
+		container.NewGridWrap(fyne.NewSize(sliderWidth, 36), pidKpSlider),
+		container.NewGridWrap(fyne.NewSize(entryWidth, 36), pidKp),
+	)
+	kiRow := container.NewHBox(
+		container.NewGridWrap(fyne.NewSize(sliderWidth, 36), pidKiSlider),
+		container.NewGridWrap(fyne.NewSize(entryWidth, 36), pidKi),
+	)
+	kdRow := container.NewHBox(
+		container.NewGridWrap(fyne.NewSize(sliderWidth, 36), pidKdSlider),
+		container.NewGridWrap(fyne.NewSize(entryWidth, 36), pidKd),
+	)
+
+	pidForm := widget.NewForm(
+		widget.NewFormItem("Presets", pidPresetSelect),
+		widget.NewFormItem("Kp (Reaction)", kpRow),
+		widget.NewFormItem("Ki (Correction)", kiRow),
+		widget.NewFormItem("Kd (Stability)", kdRow),
 		widget.NewFormItem("Target Temp", pidTarget),
-		widget.NewFormItem("Kp (Reaction)", pidKp),
-		widget.NewFormItem("Ki (Correction)", pidKi),
-		widget.NewFormItem("Kd (Stability)", pidKd),
 		widget.NewFormItem("Min Duty (%)", minDuty),
 		widget.NewFormItem("Max Duty (%)", maxDuty),
-	))
+	)
+	pidContainer.Add(pidForm)
 	pidContainer.Hide() // Default hidden
 
 	// Mode Logic
@@ -1388,28 +1552,7 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 	}
 
 	// Store widgets
-	fanWidgets[id] = struct {
-		ModeSegment      *widget.Select
-		CurveContainer   *fyne.Container
-		PidContainer     *fyne.Container
-		TempSourceSelect *widget.Select
-		TempAlarmSelect  *widget.Select
-		FanAlarmSelect   *widget.Select
-		HaltOnSelect     *widget.Select
-		StepDurSlider    *widget.Slider
-		PidTargetEntry   *widget.Entry
-		PidKpEntry       *widget.Entry
-		PidKiEntry       *widget.Entry
-		PidKdEntry       *widget.Entry
-		MinDutyEntry     *widget.Entry
-		MaxDutyEntry     *widget.Entry
-		CurvePoints      []struct {
-			TempSlider *widget.Slider
-			FanSlider  *widget.Slider
-			TempLabel  *widget.Label
-			FanLabel   *widget.Label
-		}
-	}{
+	fanWidgets[id] = FanWidgetGroup{
 		ModeSegment:      modeSelect,
 		CurveContainer:   curveContainer,
 		PidContainer:     pidContainer,
@@ -1418,10 +1561,14 @@ func makeFanSection(id string, title string) fyne.CanvasObject {
 		FanAlarmSelect:   fanAlarm,
 		HaltOnSelect:     haltOn,
 		StepDurSlider:    stepDur,
+		PidPresetSelect:  pidPresetSelect,
 		PidTargetEntry:   pidTarget,
 		PidKpEntry:       pidKp,
+		PidKpSlider:      pidKpSlider,
 		PidKiEntry:       pidKi,
+		PidKiSlider:      pidKiSlider,
 		PidKdEntry:       pidKd,
+		PidKdSlider:      pidKdSlider,
 		MinDutyEntry:     minDuty,
 		MaxDutyEntry:     maxDuty,
 		CurvePoints:      curvePoints,
@@ -1638,19 +1785,41 @@ func UpdateCurvesUI() {
 			}
 		}
 		if w.PidKpEntry != nil {
-			w.PidKpEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKp))
+			w.PidKpEntry.SetText(fmt.Sprintf("%.2f", cfg.PidKp))
+		}
+		if w.PidKpSlider != nil {
+			w.PidKpSlider.SetValue(cfg.PidKp)
 		}
 		if w.PidKiEntry != nil {
-			w.PidKiEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKi))
+			w.PidKiEntry.SetText(fmt.Sprintf("%.2f", cfg.PidKi))
+		}
+		if w.PidKiSlider != nil {
+			w.PidKiSlider.SetValue(cfg.PidKi)
 		}
 		if w.PidKdEntry != nil {
-			w.PidKdEntry.SetText(fmt.Sprintf("%.1f", cfg.PidKd))
+			w.PidKdEntry.SetText(fmt.Sprintf("%.2f", cfg.PidKd))
+		}
+		if w.PidKdSlider != nil {
+			w.PidKdSlider.SetValue(cfg.PidKd)
+		}
+		if w.PidPresetSelect != nil {
+			preset := "Presets"
+			if math.Abs(cfg.PidKp-1.2) < 0.05 && math.Abs(cfg.PidKi-1.2) < 0.05 && math.Abs(cfg.PidKd-0.08) < 0.02 {
+				preset = "Conservative"
+			} else if math.Abs(cfg.PidKp-1.6) < 0.05 && math.Abs(cfg.PidKi-1.8) < 0.05 && math.Abs(cfg.PidKd-0.10) < 0.02 {
+				preset = "Balanced"
+			} else if math.Abs(cfg.PidKp-2.0) < 0.05 && math.Abs(cfg.PidKi-2.0) < 0.05 && math.Abs(cfg.PidKd-0.20) < 0.02 {
+				preset = "Aggressive"
+			} else if math.Abs(cfg.PidKp-1.2) < 0.05 && math.Abs(cfg.PidKi-0.0) < 0.05 && math.Abs(cfg.PidKd-0.00) < 0.02 {
+				preset = "P only"
+			}
+			w.PidPresetSelect.SetSelected(preset)
 		}
 		if w.MinDutyEntry != nil {
 			w.MinDutyEntry.SetText(fmt.Sprintf("%d", int(float64(cfg.MinDuty)/2.55)))
 		}
 		if w.MaxDutyEntry != nil {
-			maxDutyVal := int(float64(cfg.MaxDuty)/2.55)
+			maxDutyVal := int(float64(cfg.MaxDuty) / 2.55)
 			if maxDutyVal == 0 && cfg.MaxDuty == 0 {
 				maxDutyVal = 100
 			}
