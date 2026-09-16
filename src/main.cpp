@@ -48,9 +48,12 @@ void PlayAlarmsTask(void *pvParameters);
 
 String GenerateSettingsJsonString(bool hidePassword = false);
 
+
 // Telemetry
 std::string PrepareTelemetryPayload(const std::string &event = "default");
 String GenerateSensorsJson();
+void SaveSettingsFromJson(const JsonVariant &json, bool needs_reboot = false);
+
 
 // HTTP Server
 void HandleHttpNotFound(AsyncWebServerRequest *request);
@@ -131,7 +134,6 @@ void InitializeTasks() {
               6, &gProcessPIDControllerTaskHandle);
   xTaskCreate(PlayLedsTask, "PlayLEDs", 4096, NULL, 5, NULL);
   xTaskCreate(DisplayDataTask, "DisplayData", 4096, NULL, 3, NULL);
-  xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 4096, NULL, 2, NULL);
   xTaskCreate(PlayAlarmsTask, "PlayAlarms", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
   InitializeMqttTelemetryTask(taskScheduler, gSendTelemetryTask);
@@ -272,6 +274,8 @@ void setup() {
   // Same goes for signal passthrough
   xTaskCreate(GenerateTachSignalTask, "GenerateTachSignalTask", 4096, NULL, 4,
               NULL);
+  // Same for USB CDC readouts
+  xTaskCreate(NativeUsbTelemetryTask, "UsbTelTask", 4096, NULL, 2, NULL);
 
   InitializeConfig();
   InitializeOutputs();
@@ -279,6 +283,7 @@ void setup() {
   InitializeScreen();
   InitializeWifi();
   InitializeHttpServer();
+  
 
   if (!systemSettings.setup_done) {
     Serial.println(
@@ -925,11 +930,10 @@ String GenerateSettingsJsonString(bool hidePassword) {
   return buffer;
 }
 
-void SaveSettingsFromJson(const JsonVariant &json) {
+void SaveSettingsFromJson(const JsonVariant &json, bool needs_reboot) {
   JsonObject root = json.as<JsonObject>();
 
   // Check for changes requiring reboot
-  bool needs_reboot = false;
   if (root["offline_mode"].is<bool>()) {
     bool new_offline = root["offline_mode"];
     if (systemSettings.offline_mode != new_offline)
@@ -1098,7 +1102,7 @@ void NativeUsbTelemetryTask(void *pvParameters) {
             } else if (command == "save-settings") {
               if (!error) {
                 USBTelemetryPort.println("{\"status\": \"settings_saved\"}");
-                SaveSettingsFromJson(doc);
+                SaveSettingsFromJson(doc, true);
                 // Note: Reboot might happen in function
               } else {
                 USBTelemetryPort.println("{\"error\": \"invalid_json\"}");

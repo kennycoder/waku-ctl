@@ -2,5 +2,9 @@
     "cmake.ignoreCMakeListsMissing": true,
     "files.associations": {
         "numeric": "cpp"
-    }
+    },
+    "clangd.arguments": [
+        "--compile-commands-dir=d:/Development/embedded/ESP32/waku-ctl/.cache/clangd",
+        "--query-driver=C:/Users/nikol/.platformio/packages/toolchain-*/bin/*,C:/Users/nikol/.platformio/packages/tool-*/bin/*"
+    ]
 }

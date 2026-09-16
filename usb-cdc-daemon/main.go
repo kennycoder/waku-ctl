@@ -30,9 +30,10 @@ import (
 )
 
 const (
-	VID            = "303A"
-	PID            = "82E5"
-	ComPortTimeout = 500 * time.Millisecond // Timeout for reading from COM port
+	VID                 = "303A"
+	PID                 = "82E5"
+	ComPortTimeout      = 500 * time.Millisecond // Timeout for reading from COM port
+	NetworksScanTimeout = 20 * time.Second       // Timeout for waiting for WiFi networks scan
 )
 
 // TelemetryData represents the structure of the incoming JSON telemetry
@@ -154,6 +155,11 @@ var (
 	// Available Sensors from device
 	availableSensors      []string
 	availableSensorsMutex sync.Mutex
+
+	// Networks scan tracking
+	waitingForNetworks    bool
+	networksScanStartTime time.Time
+	networksMutex         sync.Mutex
 
 	// Backup
 	pendingBackupWriter      fyne.URIWriteCloser
@@ -321,9 +327,13 @@ func main() {
 	setupSsidSelect.SetSelected("-- Offline (AP) Mode --")
 
 	setupSsidRefreshBtn = widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), func() {
+		if isWaitingForNetworksScan() {
+			return
+		}
 		if setupSsidRefreshBtn != nil {
 			setupSsidRefreshBtn.Disable()
 		}
+		setupSsidSelect.ClearSelected()
 		setupSsidSelect.PlaceHolder = "Scanning..."
 		setupSsidSelect.Refresh()
 		sendCommand("networks")
@@ -346,6 +356,7 @@ func main() {
 	)
 
 	setupSaveBtn := widget.NewButton("Finish Setup & Connect", func() {
+		setWaitingForNetworks(false)
 		s := Settings{}
 		if setupSsidSelect.Selected == "-- Offline (AP) Mode --" || setupSsidSelect.Selected == "" {
 			s.SSID = ""
@@ -1848,6 +1859,34 @@ func UpdateCurvesUI() {
 	}
 }
 
+func setWaitingForNetworks(waiting bool) {
+	networksMutex.Lock()
+	waitingForNetworks = waiting
+	if waiting {
+		networksScanStartTime = time.Now()
+	}
+	networksMutex.Unlock()
+}
+
+func isWaitingForNetworksScan() bool {
+	networksMutex.Lock()
+	defer networksMutex.Unlock()
+	return waitingForNetworks
+}
+
+func checkNetworksScanWaiting() (isWaiting bool, timedOut bool) {
+	networksMutex.Lock()
+	defer networksMutex.Unlock()
+	if !waitingForNetworks {
+		return false, false
+	}
+	if time.Since(networksScanStartTime) >= NetworksScanTimeout {
+		waitingForNetworks = false
+		return false, true
+	}
+	return true, false
+}
+
 func sendCommand(cmd string) {
 	portMutex.Lock()
 	defer portMutex.Unlock()
@@ -1856,6 +1895,8 @@ func sendCommand(cmd string) {
 		_, err := globalPort.Write([]byte(cmd + "\n"))
 		if err != nil {
 			log.Printf("Error sending command: %v", err)
+		} else if cmd == "networks" {
+			setWaitingForNetworks(true)
 		}
 	} else {
 		log.Println("Port not connected")
@@ -1868,6 +1909,8 @@ func startTelemetryMonitor() {
 
 OUTER:
 	for {
+		setWaitingForNetworks(false)
+
 		fyne.Do(func() {
 			if connectionOverlay != nil {
 				connectionOverlay.Show()
@@ -1925,10 +1968,14 @@ OUTER:
 		for {
 			n, err := port.Read(reader)
 			if err != nil {
+				setWaitingForNetworks(false)
 				fyne.Do(func() {
 					if connectionOverlay != nil {
 						connectionOverlay.Show()
 						connectionOverlay.Refresh()
+					}
+					if setupSsidRefreshBtn != nil {
+						setupSsidRefreshBtn.Enable()
 					}
 				})
 
@@ -1955,6 +2002,27 @@ OUTER:
 				})
 				staleRetries = 0 // Reset stale retries on successful read
 			} else { // n == 0
+				isWaiting, timedOut := checkNetworksScanWaiting()
+				if isWaiting {
+					// Networks scan is actively running on the device.
+					// Keep retries at 0 and do not trigger reconnection or overlay.
+					staleRetries = 0
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if timedOut {
+					log.Printf("Networks scan timed out after %v without response, resuming normal operations", NetworksScanTimeout)
+					fyne.Do(func() {
+						if setupSsidRefreshBtn != nil {
+							setupSsidRefreshBtn.Enable()
+						}
+						if setupSsidSelect != nil && setupSsidSelect.PlaceHolder == "Scanning..." {
+							setupSsidSelect.PlaceHolder = "Scan timed out (click refresh)"
+							setupSsidSelect.Refresh()
+						}
+					})
+				}
+
 				staleRetries++
 				time.Sleep(100 * time.Millisecond)
 				if staleRetries >= 5 {
@@ -2041,10 +2109,11 @@ func checkSetupState() {
 	fyne.Do(func() {
 		if !setupDone {
 			setupOverlay.Show()
-			if len(setupSsidSelect.Options) <= 1 {
+			if len(setupSsidSelect.Options) <= 1 && !isWaitingForNetworksScan() {
 				if setupSsidRefreshBtn != nil {
 					setupSsidRefreshBtn.Disable()
 				}
+				setupSsidSelect.ClearSelected()
 				setupSsidSelect.PlaceHolder = "Scanning..."
 				setupSsidSelect.Refresh()
 				sendCommand("networks")
@@ -2153,14 +2222,30 @@ func processTelemetry(jsonStr string) {
 		// Try Networks list
 		if strings.Contains(jsonStr, `"networks"`) {
 			var networks NetworksResponse
-			if err := json.Unmarshal([]byte(jsonStr), &networks); err == nil && len(networks.Networks) > 0 {
+			if err := json.Unmarshal([]byte(jsonStr), &networks); err == nil {
 				log.Printf("Received Networks list: %v", networks.Networks)
 				options := []string{"-- Offline (AP) Mode --"}
-				options = append(options, networks.Networks...)
+				if len(networks.Networks) > 0 {
+					options = append(options, networks.Networks...)
+				}
 				fyne.Do(func() {
 					setupSsidSelect.Options = options
-					setupSsidSelect.PlaceHolder = "Select WiFi Network"
+					if len(networks.Networks) > 0 {
+						setupSsidSelect.PlaceHolder = "Select WiFi Network"
+					} else {
+						setupSsidSelect.PlaceHolder = "No networks found (click refresh)"
+					}
 					setupSsidSelect.Refresh()
+					if setupSsidRefreshBtn != nil {
+						setupSsidRefreshBtn.Enable()
+					}
+				})
+				setWaitingForNetworks(false)
+				return
+			} else {
+				log.Printf("Error unmarshalling networks response: %v", err)
+				setWaitingForNetworks(false)
+				fyne.Do(func() {
 					if setupSsidRefreshBtn != nil {
 						setupSsidRefreshBtn.Enable()
 					}
